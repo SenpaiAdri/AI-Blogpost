@@ -2,8 +2,9 @@ import Image from "next/image";
 
 export default function Navbar() {
   return (
-    <div className="h-18 w-full absolute top-0 left-0 flex flex-row items-center justify-center
+    <div className="bg-[#131316]/10 h-18 w-full absolute top-0 left-0 flex flex-row items-center justify-center backdrop-blur-sm
     border border-[#6A6B70] border-dashed border-b-2 border-t-0 border-x-0">
+      {/* Left Side */}
       <div className="h-full hidden sm:block sm:flex-[.25] md:flex-[.5] lg:flex-1"></div>
 
       {/* Main NavbarContent */}
@@ -21,6 +22,8 @@ export default function Navbar() {
         </div>
         <p className="text-white text-lg font-bold">about us</p>
       </div>
+
+      {/* Right Side */}
       <div className="h-full hidden sm:block sm:flex-[.25] md:flex-[.5] lg:flex-1"></div>
     </div>
   );
