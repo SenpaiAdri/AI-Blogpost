@@ -1,61 +1,92 @@
+"use client";
+
 import { Post } from "@/lib/types";
 import Tags from "./Tags";
 import Link from "next/link";
 
 export default function BlogCard({ post }: { post: Post }) {
-    // Helper to safely get TLDR items.
-    // We assume it's string[], but let's be safe.
-    const tldrItems = Array.isArray(post.tldr) ? post.tldr : [];
+  const tldrItems = Array.isArray(post.tldr) ? post.tldr : [];
 
-    return (
-        <Link 
-            href={`/blog/${post.slug}`}
-            className="block p-6 border border-[#393A41] rounded-2xl hover:border-[#6A6B70] transition-colors duration-200 group"
-        >
-            <div className="flex flex-col h-full">
-                {/* Header */}
-                <h2 className="text-2xl font-bold text-white group-hover:text-blue-400 transition-colors">
-                    {post.title}
-                </h2>
+  return (
+    <div className="relative block p-6 border border-[#393A41] rounded-2xl hover:border-[#6A6B70] transition-colors duration-200 group">
+      <div className="flex flex-col h-full">
+        {/* Header */}
+        <h2 className="text-2xl font-bold text-white group-hover:text-blue-400 transition-colors">
+          <Link href={`/blog/${post.slug}`} className="before:absolute before:inset-0 focus:outline-none">
+            {post.title}
+          </Link>
+        </h2>
 
-                {/* Tags */}
-                <div className="mb-3 flex flex-row items-start justify-between mt-5">
-                    <Tags tags={post.tags || []} />
-                    <div className="mt-2 text-sm text-[#808080]">
-                        {new Date(post.published_at || "").toLocaleDateString('en-US', {
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                        })}
-                    </div>
-                </div>
+        {/* Tags */}
+        <div className="py-2 flex flex-row items-start justify-between mt-2 relative z-10 pointer-events-none">
+          <div className="pointer-events-auto">
+            <Tags tags={post.tags || []} />
+          </div>
+          <div className="text-sm text-[#808080]">
+            {new Date(post.published_at || "").toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}
+          </div>
+        </div>
 
-                {/* TL;DR Section (Replaces Excerpt) */}
-                {tldrItems.length > 0 && (
-                    <div className="mb-6 bg-[#2c2c31]/50 p-4 rounded-lg border border-[#3e3e44]/50">
-                        <p className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">TL;DR</p>
-                        <ul className="space-y-2">
-                            {tldrItems.map((item: string | any, index: number) => (
-                                <li key={index} className="flex items-start text-gray-300 text-sm">
-                                    <span className="mr-2 text-blue-400 mt-0.5">•</span>
-                                    {/* Handle both string and legacy object format just in case */}
-                                    <span>{typeof item === 'string' ? item : item.name}</span>
-                                </li>
-                            ))}
-                        </ul>
-                    </div>
-                )}
+        {/* TL;DR Section */}
+        {tldrItems.length > 0 && (
+          <div className="px-4">
+            <p className="text-sm font-bold text-[#808080] my-2">TL;DR</p>
+            <ul className="space-y-2">
+              {tldrItems.map((item: string | any, index: number) => (
+                <li key={index} className="flex items-start text-white text-m">
+                  <span className="mr-2">•</span>
+                  {/* Handle both string and legacy object format just in case */}
+                  <span>{typeof item === 'string' ? item : item.name}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
 
-                {/* Footer */}
-                <div className="mt-auto flex items-center justify-end">
-                    <span className="text-sm font-medium text-blue-400 group-hover:translate-x-1 transition-transform inline-flex items-center">
-                        Read full post 
-                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                        </svg>
+        {/* Blog's Footer */}
+        <div className="mt-6 flex items-center justify-between relative z-10">
+          <div className="text-sm font-medium text-[#808080]">
+            {post.source_url && post.source_url.length > 0 && (
+              <div className="text-sm font-medium text-[#808080] inline-flex items-center flex-wrap">
+                <span className="mr-1">source:</span>
+                {post.source_url.map((source: any, index: number) => {
+                  const url = typeof source === 'string' ? null : source.url;
+                  const name = typeof source === 'string' ? source : (source.name || source.url);
+
+                  return (
+                    <span key={index} className="inline-flex items-center">
+                      {index > 0 && <span className="mx-1">|</span>}
+                      {url ? (
+                        <a
+                          href={url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:underline cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {name}
+                        </a>
+                      ) : (
+                        <span className="text-blue-400">{name}</span>
+                      )}
                     </span>
-                </div>
-            </div>
-        </Link>
-    );
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <span className="text-sm font-medium text-blue-400 group-hover:translate-x-1 transition-transform inline-flex items-center pointer-events-none">
+            Read full post
+            <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
 }

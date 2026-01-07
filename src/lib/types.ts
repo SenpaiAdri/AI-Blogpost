@@ -11,15 +11,15 @@ export interface Post {
   created_at: string
   slug: string
   title: string
-  tldr: string[] | null 
+  tldr: string[] | null
   content: string | null
   excerpt: string | null
   cover_image: string | null
   is_published: boolean
   published_at: string | null
-  sources: Source[] | null
+  source_url: Source[] | null
   ai_model: string | null
-  tags?: Tag[] 
+  tags?: Tag[]
 }
 
 export interface Source {

@@ -2,29 +2,24 @@ import Image from "next/image";
 
 export default function Navbar() {
   return (
-    <div className="bg-[#131316]/10 h-18 w-full absolute top-0 left-0 flex flex-row items-center justify-center backdrop-blur-sm
-    border border-[#6A6B70] border-dashed border-b-2 border-t-0 border-x-0">
-      {/* Left Side */}
-      <div className="h-full hidden sm:block sm:flex-[.25] md:flex-[.5] lg:flex-1"></div>
+    <div className="fixed top-0 left-0 w-full z-50 bg-[#131316]/10 backdrop-blur-md border-b-2 border-[#6A6B70] border-dashed">
+      <div className="w-full flex justify-center">
+        <div className="w-full max-w-4xl flex items-center justify-between px-4 sm:px-8 py-2">
+          {/* Logo Area */}
+          <div className="relative w-[120px] h-[50px]">
+            <Image
+              src="/logo/ai_blogpost_text_dark.svg"
+              alt="logo"
+              fill
+              className="object-contain object-left"
+              priority
+              unoptimized
+            />
+          </div>
 
-      {/* Main NavbarContent */}
-      <div className="flex-2 flex flex-row items-center justify-between px-8
-      sm:px-10 md:px-15 lg:px-20">
-        <div className="relative w-[120px] h-[130px]">
-          <Image
-            src="/logo/ai_blogpost_text_dark.svg"
-            alt="logo"
-            fill
-            className="object-contain"
-            priority
-            unoptimized
-          />
+          <p className="text-white text-lg font-bold">about us</p>
         </div>
-        <p className="text-white text-lg font-bold">about us</p>
       </div>
-
-      {/* Right Side */}
-      <div className="h-full hidden sm:block sm:flex-[.25] md:flex-[.5] lg:flex-1"></div>
     </div>
   );
 }
