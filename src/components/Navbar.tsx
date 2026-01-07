@@ -17,7 +17,7 @@ export default function Navbar() {
             />
           </div>
 
-          <p className="text-white text-lg font-bold">about us</p>
+          <p className="text-white text-base sm:text-lg font-bold">about us</p>
         </div>
       </div>
     </div>

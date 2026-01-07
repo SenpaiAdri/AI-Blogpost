@@ -44,7 +44,9 @@ export default async function Home() {
 
       {/* Main Layout Container */}
       <div className="w-full flex justify-center">
-        <main className="w-full max-w-4xl border-x-2 border-[#6A6B70] border-dashed min-h-screen pt-24 px-4 sm:px-8 pb-20">
+        <main className="w-full max-w-4xl border-x-2 border-[#6A6B70] border-dashed min-h-screen pt-19 px-2 pb-20
+        sm:px-4 sm:pt-21
+        md:px-8 md:pt-24">
           <div className="w-full space-y-6">
             {posts && posts.length > 0 ? (
               posts.map((post: Post) => (
