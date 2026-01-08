@@ -44,8 +44,8 @@ export default async function Home() {
 
       {/* Main Layout Container */}
       <div className="w-full flex justify-center">
-        <main className="w-full max-w-4xl border-x-2 border-[#6A6B70] border-dashed min-h-screen pt-19 px-2 pb-20
-        sm:px-4 sm:pt-21
+        <main className="w-full max-w-4xl border-x-2 border-[#6A6B70] border-dashed min-h-screen pt-19 px-2 pb-10 
+        sm:pb-20 sm:px-4 sm:pt-21
         md:px-8 md:pt-24">
           <div className="w-full space-y-6">
             {posts && posts.length > 0 ? (
@@ -60,7 +60,7 @@ export default async function Home() {
             )}
 
             {posts && posts.length > 0 && (
-              <p className="text-center text-gray-400 pt-10 pb-10">
+              <p className="text-center text-sm text-gray-400 px-10 sm:pt-10 sm:pb-10">
                 That's all for now! Check back tomorrow for more posts.
               </p>
             )}

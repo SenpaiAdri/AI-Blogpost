@@ -94,17 +94,22 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
             <article className="max-w-none text-white leading-relaxed space-y-4 mt-10">
               <Markdown components={{
                 p: ({ children }) => <p className="text-white">{children}</p>,
-                h1: ({ children }) => <h1 className="text-3xl font-bold text-white">{children}</h1>,
-                h2: ({ children }) => <h2 className="text-2xl font-bold text-white">{children}</h2>,
-                h3: ({ children }) => <h3 className="text-xl font-bold text-white">{children}</h3>,
-                h4: ({ children }) => <h4 className="text-lg font-bold text-white">{children}</h4>,
+                h1: ({ children }) => <h1 className="text-2xl font-bold text-white">{children}</h1>,
+                h2: ({ children }) => <h2 className="text-xl font-bold text-white">{children}</h2>,
+                h3: ({ children }) => <h3 className="text-lg font-bold text-white">{children}</h3>,
+                h4: ({ children }) => <h4 className="text-base font-bold text-white">{children}</h4>,
+                h5: ({ children }) => <h5 className="text-sm font-bold text-white">{children}</h5>
               }}>{post.content || ""}</Markdown>
             </article>
 
             {/* Sources Footer */}
             {post.source_url && post.source_url.length > 0 && (
               <div className="pt-8 border-t border-[#393A41] mt-12">
-                <h3 className="text-sm font-bold text-gray-400 mb-3">Sources</h3>
+                {post.source_url.length > 1 ? (
+                  <h3 className="text-sm font-bold text-gray-400 mb-3">Sources:</h3>)
+                  : (<h3 className="text-sm font-bold text-gray-400 mb-3">Source:</h3>)
+                }
+
                 <div className="flex flex-wrap gap-3">
                   {post.source_url.map((source: any, i) => {
                     const url = typeof source === 'string' ? null : source.url;
@@ -115,7 +120,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300 text-sm bg-[#1C1C21] px-3 py-1.5 rounded-md transition-colors"
+                        className="text-blue-400 hover:text-blue-300 text-sm bg-[#26262C] px-3 py-1.5 rounded-4xl transition-colors"
                       >
                         {name} ↗
                       </a>

@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Navbar() {
   return (
@@ -7,14 +8,16 @@ export default function Navbar() {
         <div className="w-full max-w-4xl flex items-center justify-between px-4 sm:px-8 py-2">
           {/* Logo Area */}
           <div className="relative w-[120px] h-[50px]">
-            <Image
-              src="/logo/ai_blogpost_text_dark.svg"
-              alt="logo"
-              fill
-              className="object-contain object-left"
-              priority
-              unoptimized
-            />
+            <Link href="/">
+              <Image
+                src="/logo/ai_blogpost_text_dark.svg"
+                alt="logo"
+                fill
+                className="object-contain object-left"
+                priority
+                unoptimized
+              />
+            </Link>
           </div>
 
           <p className="text-white text-base sm:text-lg font-bold">about us</p>

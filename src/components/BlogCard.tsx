@@ -52,7 +52,10 @@ export default function BlogCard({ post }: { post: Post }) {
         <div className="mt-6 flex items-center justify-between relative z-10">
           {post.source_url && post.source_url.length > 0 && (
             <div className="text-xs sm:text-sm font-medium text-[#808080] inline-flex items-center flex-wrap">
-              <span className="mr-1">source:</span>
+              {post.source_url.length > 1 ?
+                <span className="mr-1">sources:</span>
+                : <span className="mr-1">source:</span>
+              }
               {post.source_url.map((source: any, index: number) => {
                 const url = typeof source === 'string' ? null : source.url;
                 const name = typeof source === 'string' ? source : (source.name || source.url);
