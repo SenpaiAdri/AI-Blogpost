@@ -4,7 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { Post, Tag } from "@/lib/types";
 
 // Revalidate data every 120 seconds
-// export const revalidate = 120;
+export const revalidate = 120;
 
 export default async function Home() {
   // Fetch posts from Supabase including tags
@@ -31,7 +31,7 @@ export default async function Home() {
   // Move fetched data to the Post interface
   const posts: Post[] = (rawPosts || []).map((post: any) => {
     const tags = post.post_tags?.map((pt: any) => pt.tags as Tag) || [];
-    // console.log(`Post: ${post.title}, \nTags:`, tags);
+    console.log(`Post: ${post.title}, \nTags:`, tags);
     return {
       ...post,
       tags
