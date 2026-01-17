@@ -1,42 +1,13 @@
 import BlogCard from "@/components/BlogCard";
 import Navbar from "@/components/Navbar";
-import { supabase } from "@/lib/supabase";
-import { Post, Tag } from "@/lib/types";
+import { getPosts } from "@/lib/posts";
+import { Post } from "@/lib/types";
 
 // Revalidate data every 120 seconds
 export const revalidate = 120;
 
 export default async function Home() {
-  // Fetch posts from Supabase including tags
-  const { data: rawPosts, error } = await supabase
-    .from("posts")
-    .select(`
-      *,
-      post_tags (
-        tags (
-          *
-        )
-      )
-    `)
-    .eq("is_published", true)
-    .order("published_at", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching posts:", error);
-    // } else {
-    //   console.log("Fetched posts:", rawPosts?.length, "posts");
-    //   console.log("Raw Posts Data:", JSON.stringify(rawPosts, null, 2));
-  }
-
-  // Move fetched data to the Post interface
-  const posts: Post[] = (rawPosts || []).map((post: any) => {
-    const tags = post.post_tags?.map((pt: any) => pt.tags as Tag) || [];
-    console.log(`Post: ${post.title}, \nTags:`, tags);
-    return {
-      ...post,
-      tags
-    };
-  });
+  const posts: Post[] = await getPosts();
 
   return (
     <div className="min-h-screen w-full bg-[#131316] text-white">
@@ -61,7 +32,7 @@ export default async function Home() {
 
             {posts && posts.length > 0 && (
               <p className="text-center text-sm text-gray-400 px-10 sm:pt-10 sm:pb-10">
-                That's all for now! Check back tomorrow for more posts.
+                That&apos;s all for now! Check back tomorrow for more posts.
               </p>
             )}
           </div>

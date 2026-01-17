@@ -22,6 +22,12 @@ export interface Post {
   tags?: Tag[]
 }
 
+export interface PostRow extends Omit<Post, 'tags'> {
+  post_tags: {
+    tags: Tag
+  }[] | null
+}
+
 export interface Source {
   name: string
   url: string

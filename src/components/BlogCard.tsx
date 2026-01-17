@@ -3,6 +3,7 @@
 import { Post } from "@/lib/types";
 import Tags from "./Tags";
 import Link from "next/link";
+import { formatDate, formatSource } from "@/lib/utils";
 
 export default function BlogCard({ post }: { post: Post }) {
   const tldrItems = Array.isArray(post.tldr) ? post.tldr : [];
@@ -24,11 +25,7 @@ export default function BlogCard({ post }: { post: Post }) {
             <Tags tags={post.tags || []} />
           </div>
           <div className="text-xs sm:text-sm text-[#808080]">
-            {new Date(post.published_at || "").toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'long',
-              day: 'numeric'
-            })}
+            {formatDate(post.published_at)}
           </div>
         </div>
 
@@ -37,13 +34,16 @@ export default function BlogCard({ post }: { post: Post }) {
           <div className="px-4">
             <p className="text-xs sm:text-sm font-bold text-[#808080] my-2">TL;DR</p>
             <ul className="space-y-2">
-              {tldrItems.map((item: string | any, index: number) => (
-                <li key={index} className="flex items-start text-white text-sm sm:text-base">
-                  <span className="mr-2">•</span>
-                  {/* Handle both string and legacy object format just in case */}
-                  <span>{typeof item === 'string' ? item : item.name}</span>
-                </li>
-              ))}
+              {tldrItems.map((item, index) => {
+                const displayText = typeof item === 'string' ? item : (item as { name: string }).name;
+
+                return (
+                  <li key={index} className="flex items-start text-white text-sm sm:text-base">
+                    <span className="mr-2">•</span>
+                    <span>{displayText}</span>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
@@ -56,9 +56,8 @@ export default function BlogCard({ post }: { post: Post }) {
                 <span className="mr-1">sources:</span>
                 : <span className="mr-1">source:</span>
               }
-              {post.source_url.map((source: any, index: number) => {
-                const url = typeof source === 'string' ? null : source.url;
-                const name = typeof source === 'string' ? source : (source.name || source.url);
+              {post.source_url.map((source, index) => {
+                const { name, url } = formatSource(source);
 
                 return (
                   <span key={index} className="inline-flex items-center">

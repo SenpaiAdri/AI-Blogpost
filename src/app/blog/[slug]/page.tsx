@@ -1,46 +1,54 @@
 import Navbar from "@/components/Navbar";
 import Tags from "@/components/Tags";
-import { supabase } from "@/lib/supabase";
-import { Post, Tag } from "@/lib/types";
+import { getPostBySlug, getAllPostSlugs } from "@/lib/posts";
+import { formatDate, formatSource } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import Markdown from "react-markdown";
+import { Metadata } from "next";
 
 // Revalidate data every 120 seconds
 export const revalidate = 120;
 
 // Optional: Generate static paths for better performance at build time
 export async function generateStaticParams() {
-  const { data: posts } = await supabase.from("posts").select("slug");
-  return posts?.map(({ slug }) => ({ slug })) || [];
+  return await getAllPostSlugs();
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getPostBySlug(slug);
+
+  if (!post) {
+    return {
+      title: "Post Not Found",
+    };
+  }
+
+  return {
+    title: post.title,
+    description: post.excerpt || post.content?.slice(0, 160) || "Read this post on AI Blogpost",
+    openGraph: {
+      title: post.title,
+      description: post.excerpt || undefined,
+      images: post.cover_image ? [post.cover_image] : undefined,
+      type: "article",
+      publishedTime: post.published_at || undefined,
+      tags: post.tags?.map(t => t.name),
+    }
+  };
 }
 
 export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
-  // Await params in newer Next.js versions
+  // Await params
   const { slug } = await params;
 
   // Fetch the specific post by slug
-  const { data: postData, error } = await supabase
-    .from("posts")
-    .select(`
-      *,
-      post_tags (
-        tags (
-          *
-        )
-      )
-    `)
-    .eq("slug", slug)
-    .single();
+  const post = await getPostBySlug(slug);
 
-  if (error || !postData) {
+  if (!post) {
     notFound();
   }
-
-  const post: Post = {
-    ...postData,
-    tags: postData.post_tags?.map((pt: any) => pt.tags as Tag) || []
-  };
 
   return (
     <div className="min-h-screen w-full bg-[#131316] text-white">
@@ -66,11 +74,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
               <div className="flex flex-wrap gap-4 items-center justify-between">
                 <Tags tags={post.tags || []} />
                 <span className="text-gray-400 text-sm">
-                  {new Date(post.published_at || "").toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                  })}
+                  {formatDate(post.published_at)}
                 </span>
               </div>
             </header>
@@ -112,8 +116,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 
                 <div className="flex flex-wrap gap-3">
                   {post.source_url.map((source: any, i) => {
-                    const url = typeof source === 'string' ? null : source.url;
-                    const name = typeof source === 'string' ? source : (source.name || source.url);
+                    const { name, url } = formatSource(source);
                     return url ? (
                       <a
                         key={i}
