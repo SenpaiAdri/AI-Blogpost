@@ -3,7 +3,6 @@ import Tags from "@/components/Tags";
 import { getPostBySlug, getAllPostSlugs } from "@/lib/posts";
 import { formatDate, formatSource } from "@/lib/utils";
 import { notFound } from "next/navigation";
-import Link from "next/link";
 import Markdown from "react-markdown";
 import { Metadata } from "next";
 
