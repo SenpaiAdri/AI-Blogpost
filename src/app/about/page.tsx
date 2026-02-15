@@ -56,7 +56,7 @@ export default function About() {
 
               <div className="lg:max-w-md lg:pb-4">
                 <div className="flex items-start gap-4 sm:gap-6">
-                  <div className="w-16 sm:w-20 border-t-2 border-dashed border-[#FF0000] mt-3 flex-shrink-0" />
+                  <div className="w-16 sm:w-20 border-t-2 border-dashed border-[#FF0000] mt-3 shrink-0" />
                   <p className="text-sm sm:text-base lg:text-lg text-[#808080] leading-relaxed">
                     An autonomous, AI-powered blogging website that create
                     and publishes the latest tech news every single day.
@@ -88,7 +88,7 @@ export default function About() {
                   <span className="text-[#FF0000]"> concise</span>, and
                   <span className="text-[#FF0000]"> autonomous</span>.
                 </p>
-                <p className="text-sm sm:text-base text-[#808080] leading-relaxed lg:max-w-md flex-shrink-0">
+                <p className="text-sm sm:text-base text-[#808080] leading-relaxed lg:max-w-md shrink-0">
                   No editorial bias. No information overload. Our AI reads through
                   the noise from 12+ sources and distills it into clear, actionable
                   posts — published automatically, every single day.
@@ -166,7 +166,7 @@ export default function About() {
                         key={i}
                         className="text-sm sm:text-base lg:text-lg font-bold text-white flex items-center gap-3"
                       >
-                        <span className="w-2.5 h-2.5 bg-[#FF0000] flex-shrink-0" />
+                        <span className="w-2.5 h-2.5 bg-[#FF0000] shrink-0" />
                         {line}
                       </p>
                     ))}
@@ -191,7 +191,7 @@ export default function About() {
           <section className="px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 py-10 sm:py-14 lg:py-16">
             <BrutalBlock label="CREATOR" accent delay={0}>
               <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-10 lg:gap-16">
-                <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-40 lg:h-28 border-2 border-dashed border-[#FF0000] flex items-center justify-center flex-shrink-0 bg-[#FF0000]/5">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 lg:w-40 lg:h-28 border-2 border-dashed border-[#FF0000] flex items-center justify-center shrink-0 bg-[#FF0000]/5">
                   <span className="text-4xl sm:text-5xl lg:text-6xl font-bold text-[#FF0000]">
                     A
                   </span>
