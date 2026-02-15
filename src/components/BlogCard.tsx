@@ -4,6 +4,7 @@ import { Post } from "@/lib/types";
 import Tags from "./Tags";
 import TransitionLink from "./TransitionLink";
 import { formatDate, formatSource } from "@/lib/utils";
+import { ChevronRight, ArrowRight } from "lucide-react";
 
 export default function BlogCard({ post }: { post: Post }) {
   const tldrItems = Array.isArray(post.tldr) ? post.tldr : [];
@@ -85,9 +86,17 @@ export default function BlogCard({ post }: { post: Post }) {
             )}
             <span className="text-xs sm:text-sm font-medium text-blue-400 group-hover:text-red-400 group-hover:translate-x-1 transition-transform inline-flex items-center pointer-events-none whitespace-nowrap">
               Read full post
-              <svg className="w-3 h-3 ml-1 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-              </svg>
+
+              <div className="relative w-4 h-4 flex items-center justify-center">
+                <ChevronRight
+                  size={16}
+                  className="absolute transition-all duration-300 group-hover:opacity-0 group-hover:translate-x-1"
+                />
+                <ArrowRight
+                  size={16}
+                  className="absolute opacity-0 group-hover:translate-x-1 transition-all duration-300 group-hover:opacity-100"
+                />
+              </div>
             </span>
           </div>
         </div>
