@@ -1,5 +1,5 @@
 import Image from "next/image";
-import Link from "next/link";
+import TransitionLink from "./TransitionLink";
 
 export default function Navbar() {
   return (
@@ -8,7 +8,7 @@ export default function Navbar() {
         <div className="w-full max-w-4xl flex items-center justify-between px-4 sm:px-8 py-2">
           {/* Logo Area */}
           <div className="relative w-[120px] h-[50px]">
-            <Link href="/">
+            <TransitionLink href="/">
               <Image
                 src="/logo/ai_blogpost_text_dark.svg"
                 alt="logo"
@@ -17,10 +17,10 @@ export default function Navbar() {
                 priority
                 unoptimized
               />
-            </Link>
+            </TransitionLink>
           </div>
-
-          <p className="text-white text-base sm:text-lg font-bold">about us</p>
+    
+          <TransitionLink href="/about" className="text-white text-base sm:text-lg font-bold">about us</TransitionLink>
         </div>
       </div>
     </div>
