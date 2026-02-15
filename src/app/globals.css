@@ -25,13 +25,78 @@ body {
 }
 
 @layer utilities {
+
   /* Hide scrollbar for Chrome, Safari and Opera */
   .no-scrollbar::-webkit-scrollbar {
     display: none;
   }
+
   /* Hide scrollbar for IE, Edge and Firefox */
   .no-scrollbar {
-    -ms-overflow-style: none; /* IE and Edge */
-    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none;
+    /* IE and Edge */
+    scrollbar-width: none;
+    /* Firefox */
+  }
+}
+
+.page-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+}
+
+.page-transition-strip {
+  flex: 1;
+  background: #696972;
+  transform: translateZ(0) scaleX(0);
+}
+
+.page-transition-strip--0 {
+  background: #787882;
+}
+
+.page-transition-strip--1 {
+  background: #696972;
+}
+
+.page-transition-strip--2 {
+  background: #5b5b66;
+}
+
+.page-transition-strip--covering {
+  transform-origin: left;
+  animation: pt-cover 0.8s ease-in-out forwards;
+}
+
+.page-transition-strip--revealing {
+  transform-origin: right;
+  animation: pt-reveal 0.8s ease-in-out forwards;
+}
+
+@keyframes pt-cover {
+  from {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+
+  to {
+    transform: scaleX(1);
+    transform-origin: left;
+  }
+}
+
+@keyframes pt-reveal {
+  from {
+    transform: scaleX(1);
+    transform-origin: right;
+  }
+
+  to {
+    transform: scaleX(0);
+    transform-origin: right;
   }
 }

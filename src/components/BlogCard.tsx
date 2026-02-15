@@ -2,7 +2,7 @@
 
 import { Post } from "@/lib/types";
 import Tags from "./Tags";
-import Link from "next/link";
+import TransitionLink from "./TransitionLink";
 import { formatDate, formatSource } from "@/lib/utils";
 
 export default function BlogCard({ post }: { post: Post }) {
@@ -14,9 +14,9 @@ export default function BlogCard({ post }: { post: Post }) {
         {/* Header */}
         <h2 className="text-lg font-bold text-white group-hover:text-blue-400 transition-colors
         sm:text-xl md:text-2xl">
-          <Link href={`/blog/${post.slug}`} className="before:absolute before:inset-0 focus:outline-none">
+          <TransitionLink href={`/blog/${post.slug}`} className="before:absolute before:inset-0 focus:outline-none">
             {post.title}
-          </Link>
+          </TransitionLink>
         </h2>
 
         {/* Tags */}
