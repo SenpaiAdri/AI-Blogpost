@@ -47,34 +47,27 @@ body {
   display: flex;
   flex-direction: column;
   pointer-events: auto;
+  overflow: hidden;
 }
 
 .page-transition-strip {
   flex: 1;
-  background: #696972;
+  background: #26262C;
   transform: translateZ(0) scaleX(0);
 }
 
-.page-transition-strip--0 {
-  background: #787882;
-}
-
-.page-transition-strip--1 {
-  background: #696972;
-}
-
-.page-transition-strip--2 {
-  background: #5b5b66;
+.page-transition-strip + .page-transition-strip {
+  margin-top: -1px;
 }
 
 .page-transition-strip--covering {
   transform-origin: left;
-  animation: pt-cover 0.8s ease-in-out forwards;
+  animation: pt-cover 0.5s ease-in-out both;
 }
 
 .page-transition-strip--revealing {
   transform-origin: right;
-  animation: pt-reveal 0.8s ease-in-out forwards;
+  animation: pt-reveal 0.5s ease-in-out both;
 }
 
 @keyframes pt-cover {

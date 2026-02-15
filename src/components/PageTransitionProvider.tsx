@@ -202,7 +202,7 @@ export default function PageTransitionProvider({
           {STRIP_INDEXES.map((index) => (
             <div
               key={index}
-              className={`page-transition-strip page-transition-strip--${index} page-transition-strip--${state}`}
+              className={`page-transition-strip page-transition-strip page-transition-strip--${state}`}
               style={{ animationDelay: `${index * STRIP_STAGGER_MS}ms` }}
               onAnimationEnd={
                 index === STRIP_COUNT - 1 ? handleStripAnimationEnd : undefined
