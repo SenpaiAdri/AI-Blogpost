@@ -19,7 +19,7 @@ export default function Navbar() {
               />
             </TransitionLink>
           </div>
-
+    
           <TransitionLink href="/about" className="text-white text-base sm:text-lg font-bold">about us</TransitionLink>
         </div>
       </div>
