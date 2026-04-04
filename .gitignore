@@ -55,4 +55,5 @@ env/
 logs/
 *.log
 
-# vscode
+# vscodelogs/
+backend/__pycache__/
