@@ -16,8 +16,8 @@ def get_supabase_client():
 
 
 def check_duplicate_url(client, url: str) -> bool:
-    """Check if a URL already exists in the database."""
-    response = client.from_("posts").select("id").eq("source_url", f'{{"url": "{url}"}}').execute()
+    """Check if a URL already exists in the database using Supabase JSON containment."""
+    response = client.from_("posts").select("id").contains("source_url", [{"url": url}]).execute()
     return len(response.data) > 0
 
 

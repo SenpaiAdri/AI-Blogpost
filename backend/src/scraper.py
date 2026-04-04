@@ -2,6 +2,10 @@ import requests
 from typing import Optional
 from bs4 import BeautifulSoup
 
+from logger import get_logger
+
+logger = get_logger("scraper")
+
 
 def fetch_with_jina(url: str) -> Optional[str]:
     """Fetch article content using Jina Reader API."""
@@ -13,7 +17,7 @@ def fetch_with_jina(url: str) -> Optional[str]:
             return response.text
         return None
     except Exception as e:
-        print(f"Jina fetch error for {url}: {e}")
+        logger.warning(f"Jina fetch error for {url}: {e}")
         return None
 
 
@@ -40,7 +44,7 @@ def fetch_with_bs4(url: str) -> Optional[str]:
             return soup.get_text(separator="\n", strip=True)[:10000]
         return None
     except Exception as e:
-        print(f"BS4 fetch error for {url}: {e}")
+        logger.warning(f"BS4 fetch error for {url}: {e}")
         return None
 
 
@@ -51,13 +55,17 @@ def scrape_article(url: str) -> Optional[str]:
     if content and len(content) > 100:
         return content
     
-    print(f"Jina failed, trying BS4 for {url}")
+    logger.debug(f"Jina failed, trying BS4 for {url}")
     return fetch_with_bs4(url)
 
 
 if __name__ == "__main__":
-    test_url = "https://openai.com/blog/gpt-4"
+    import sys
+    if len(sys.argv) > 1:
+        test_url = sys.argv[1]
+    else:
+        test_url = "https://openai.com/blog/gpt-4"
     content = scrape_article(test_url)
     if content:
-        print(f"Fetched {len(content)} characters")
-        print(content[:500])
+        logger.info(f"Fetched {len(content)} characters")
+        logger.debug(content[:500])

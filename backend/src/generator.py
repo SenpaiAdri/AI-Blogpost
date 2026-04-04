@@ -3,8 +3,14 @@ import json
 import re
 import google.generativeai as genai
 from openai import OpenAI
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 from datetime import datetime
+import hashlib
+
+from logger import get_logger
+from metrics import cost_tracker, estimate_tokens
+
+logger = get_logger("generator")
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
@@ -13,31 +19,24 @@ if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
 GEMINI_MODEL = "gemini-2.0-flash"
-OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct"
+FALLBACK_MODEL = "google/gemma-3n-e4"
+OPENROUTER_MODEL = "google/gemma-3n-e4"
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
-SYSTEM_PROMPT = """You are an expert tech blogger for a site called "AI Blogpost".
-Your task is to write a high-quality, engaging blog post about the latest AI news.
-
-Output Format: JSON only
-The output must be a valid JSON object with the following schema:
-{
-  "title": "Catchy and descriptive title",
-  "slug": "kebab-case-slug-for-url",
-  "tldr": ["Bullet point 1", "Bullet point 2", "Bullet point 3"],
-  "content": "Full markdown content...",
-  "excerpt": "Short teaser sentence (max 200 chars)",
-  "tags": ["Tag1", "Tag2", "Tag3"],
-  "source_url": [{"name": "Source Name", "url": "https://source.url"}]
-}
-
-Guidelines:
-- Content should be in Markdown format with proper headings
-- Tone: Professional, enthusiastic, yet critical/technical
-- Include code examples if relevant
-- No introductory text, just the JSON
-- Make the content informative and useful for developers"""
+def get_cover_image(title: str, content: str = "") -> str:
+    """Generate a category-based cover image URL."""
+    text = (title + " " + (content[:500] if content else "")).lower()
+    
+    for keyword, category in KEYWORD_MAP.items():
+        if keyword in text and category in COVER_IMAGES:
+            images = COVER_IMAGES[category]
+            index = int(hashlib.md5(title.encode()).hexdigest(), 16) % len(images)
+            return images[index]
+    
+    images = COVER_IMAGES["default"]
+    index = int(hashlib.md5(title.encode()).hexdigest(), 16) % len(images)
+    return images[index]
 
 
 def generate_with_gemini(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
@@ -56,7 +55,7 @@ def generate_with_gemini(topic: str, article_content: str, source_name: str, sou
 Topic: {topic}
 
 Source Material:
-{article_content[:8000]}
+{article_content[:4000]}
 
 Source: {source_name}
 Link: {source_url}
@@ -66,14 +65,20 @@ Generate a compelling, well-structured blog post in JSON format."""
         response = model.generate_content(user_prompt)
         text = response.text
         
+        input_tokens = response.usage_metadata.prompt_token_count if hasattr(response, 'usage_metadata') else estimate_tokens(article_content[:4000])
+        output_tokens = response.usage_metadata.candidates_token_count if hasattr(response, 'usage_metadata') else estimate_tokens(text)
+        cost_tracker.track_request(GEMINI_MODEL, input_tokens, output_tokens)
+        
         json_str = text.replace("```json", "").replace("```", "").strip()
         result = json.loads(json_str)
         
         result["source_url"] = [{"name": source_name, "url": source_url}]
+        result["cover_image"] = get_cover_image(result.get("title", topic), result.get("content", ""))
+        result["ai_model"] = GEMINI_MODEL
         return result
         
     except Exception as e:
-        print(f"    Gemini error: {e}")
+        logger.warning(f"    Gemini error: {e}")
         return None
 
 
@@ -111,7 +116,11 @@ Generate a compelling, well-structured blog post in JSON format."""
         )
         
         text = response.choices[0].message.content
-        print(f"    Raw response length: {len(text)}")
+        logger.debug(f"    Raw response length: {len(text)}")
+        
+        input_tokens = response.usage.prompt_tokens if hasattr(response, 'usage') else estimate_tokens(article_content[:8000])
+        output_tokens = response.usage.completion_tokens if hasattr(response, 'usage') else estimate_tokens(text)
+        cost_tracker.track_request(OPENROUTER_MODEL, input_tokens, output_tokens)
         
         # Remove markdown code blocks and control characters
         text = text.replace("```json", "").replace("```", "")
@@ -121,40 +130,52 @@ Generate a compelling, well-structured blog post in JSON format."""
         # Find and extract JSON between { and }
         json_match = re.search(r'\{[\s\S]*\}', text)
         if not json_match:
-            print(f"    No JSON found in response")
+            logger.warning(f"    No JSON found in response")
             return None
             
         json_str = json_match.group(0)
         result = json.loads(json_str)
         
         result["source_url"] = [{"name": source_name, "url": source_url}]
+        result["cover_image"] = get_cover_image(result.get("title", topic), result.get("content", ""))
+        result["ai_model"] = OPENROUTER_MODEL
         return result
         
     except json.JSONDecodeError as e:
-        print(f"    JSON parse error: {e}")
-        print(f"    Response preview: {text[:200]}...")
+        logger.warning(f"    JSON parse error: {e}")
+        logger.warning(f"    Response preview: {text[:200]}...")
         return None
     except Exception as e:
-        print(f"    OpenRouter error: {e}")
+        logger.warning(f"    OpenRouter error: {e}")
         return None
 
 
 def generate_blog_post(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
     """Generate blog post - tries Gemini first, then OpenRouter, then returns None."""
     
-    print(f"    Trying Gemini...")
+    logger.info(f"    Trying Gemini...")
+    
+    if not cost_tracker.should_continue():
+        logger.warning(f"    Budget exhausted, skipping AI generation")
+        return None
+    
     result = generate_with_gemini(topic, article_content, source_name, source_url)
     if result:
-        print(f"    ✓ Gemini succeeded")
+        logger.info(f"    ✓ Gemini succeeded")
         return result
     
-    print(f"    Trying OpenRouter...")
+    logger.info(f"    Trying OpenRouter...")
+    
+    if not cost_tracker.should_continue():
+        logger.warning(f"    Budget exhausted, skipping fallback")
+        return None
+    
     result = generate_with_openrouter(topic, article_content, source_name, source_url)
     if result:
-        print(f"    ✓ OpenRouter succeeded")
+        logger.info(f"    ✓ OpenRouter succeeded")
         return result
     
-    print(f"    AI generation failed, no more providers to try")
+    logger.warning(f"    AI generation failed, no more providers to try")
     return None
 
 
@@ -194,7 +215,8 @@ Stay tuned for more detailed coverage as more information becomes available.
 """,
         "excerpt": f"Latest update on {topic} from {source_name}.",
         "tags": ["AI", "Tech News", "Breaking"],
-        "source_url": [{"name": source_name, "url": source_url}]
+        "source_url": [{"name": source_name, "url": source_url}],
+        "cover_image": get_cover_image(topic)
     }
 
 

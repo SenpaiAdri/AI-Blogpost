@@ -2,6 +2,14 @@ import feedparser
 from dataclasses import dataclass
 from typing import List
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
+
+from logger import get_logger
+
+logger = get_logger("ingest")
+
+_thread_local = threading.local()
 
 
 @dataclass
@@ -40,7 +48,7 @@ def fetch_feed(feed_config: dict) -> List[NewsItem]:
         feed = feedparser.parse(feed_config["url"])
         
         items = []
-        for entry in feed.entries[:5]:
+        for entry in feed.entries[:15]:
             title = entry.get("title", "No Title")
             link = entry.get("link", "")
             snippet = entry.get("summary", entry.get("description", ""))
@@ -62,17 +70,33 @@ def fetch_feed(feed_config: dict) -> List[NewsItem]:
         
         return items
     except Exception as e:
-        print(f"Error fetching {feed_config['name']}: {e}")
+        logger.error(f"Error fetching {feed_config['name']}: {e}")
         return []
 
 
 def fetch_all_news() -> List[NewsItem]:
-    """Fetch all RSS feeds and return combined, sorted news."""
+    """Fetch all RSS feeds in parallel and return combined, sorted news."""
     all_news = []
+    failed_feeds = []
     
-    for feed_config in RSS_FEEDS:
-        items = fetch_feed(feed_config)
-        all_news.extend(items)
+    with ThreadPoolExecutor(max_workers=5) as executor:
+        future_to_feed = {
+            executor.submit(fetch_feed, feed_config): feed_config 
+            for feed_config in RSS_FEEDS
+        }
+        
+        for future in as_completed(future_to_feed):
+            feed_config = future_to_feed[future]
+            try:
+                items = future.result()
+                all_news.extend(items)
+                logger.debug(f"Fetched {len(items)} items from {feed_config['name']}")
+            except Exception as e:
+                logger.warning(f"Failed to fetch {feed_config['name']}: {e}")
+                failed_feeds.append(feed_config["name"])
+    
+    if failed_feeds:
+        logger.warning(f"Failed feeds: {', '.join(failed_feeds)}")
     
     all_news.sort(key=lambda x: x.pub_date, reverse=True)
     return all_news
@@ -100,5 +124,5 @@ def get_latest_news(limit: int = 10) -> List[NewsItem]:
 if __name__ == "__main__":
     news = get_latest_news(5)
     for item in news:
-        print(f"[{item.source}] {item.title}")
-        print(f"   {item.link}")
+        logger.info(f"[{item.source}] {item.title}")
+        logger.info(f"   {item.link}")
