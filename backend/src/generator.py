@@ -4,8 +4,8 @@ import google.generativeai as genai
 from typing import Optional, Dict, Any
 from datetime import datetime
 
-
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
+genai.configure(api_key=GOOGLE_API_KEY)
 
 MODEL_NAME = "gemini-2.0-flash-lite"
 

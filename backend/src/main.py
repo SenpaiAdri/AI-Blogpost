@@ -38,10 +38,14 @@ def save_post(client, post_data: dict) -> bool:
                 tag_response = client.from_("tags").upsert(
                     {"name": tag_name, "slug": slug},
                     on_conflict="slug"
-                ).select().execute()
+                ).execute()
                 
                 if tag_response.data:
                     tag_ids.append(tag_response.data[0]["id"])
+                else:
+                    existing = client.from_("tags").select("id").eq("slug", slug).execute()
+                    if existing.data:
+                        tag_ids.append(existing.data[0]["id"])
         
         post_response = client.from_("posts").insert({
             "title": post_data["title"],
