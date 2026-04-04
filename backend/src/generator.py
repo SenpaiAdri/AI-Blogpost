@@ -2,13 +2,19 @@ import os
 import json
 import re
 import google.generativeai as genai
+from openai import OpenAI
 from typing import Optional, Dict, Any
 from datetime import datetime
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
-genai.configure(api_key=GOOGLE_API_KEY)
+OPENROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
 
-MODEL_NAME = "gemini-2.0-flash-lite"
+if GOOGLE_API_KEY:
+    genai.configure(api_key=GOOGLE_API_KEY)
+
+GEMINI_MODEL = "gemini-2.0-flash"
+OPENROUTER_MODEL = "meta-llama/llama-3.3-70b-instruct"
+OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 
 SYSTEM_PROMPT = """You are an expert tech blogger for a site called "AI Blogpost".
@@ -34,14 +40,18 @@ Guidelines:
 - Make the content informative and useful for developers"""
 
 
-def generate_blog_post(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
-    """Generate a blog post from AI news using Gemini."""
-    model = genai.GenerativeModel(
-        model_name=MODEL_NAME,
-        system_instruction=SYSTEM_PROMPT
-    )
+def generate_with_gemini(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
+    """Generate blog post using Google Gemini."""
+    if not GOOGLE_API_KEY:
+        return None
     
-    user_prompt = f"""Write a blog post about this AI news:
+    try:
+        model = genai.GenerativeModel(
+            model_name=GEMINI_MODEL,
+            system_instruction=SYSTEM_PROMPT
+        )
+        
+        user_prompt = f"""Write a blog post about this AI news:
 
 Topic: {topic}
 
@@ -53,25 +63,86 @@ Link: {source_url}
 
 Generate a compelling, well-structured blog post in JSON format."""
 
-    try:
         response = model.generate_content(user_prompt)
         text = response.text
         
+        json_str = text.replace("```json", "").replace("```", "").strip()
+        result = json.loads(json_str)
+        
+        result["source_url"] = [{"name": source_name, "url": source_url}]
+        return result
+        
+    except Exception as e:
+        print(f"    Gemini error: {e}")
+        return None
+
+
+def generate_with_openrouter(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
+    """Generate blog post using OpenRouter (Llama)."""
+    if not OPENROUTER_API_KEY:
+        return None
+    
+    try:
+        client = OpenAI(
+            api_key=OPENROUTER_API_KEY,
+            base_url=OPENROUTER_BASE_URL
+        )
+        
+        user_prompt = f"""Write a blog post about this AI news:
+
+Topic: {topic}
+
+Source Material:
+{article_content[:8000]}
+
+Source: {source_name}
+Link: {source_url}
+
+Generate a compelling, well-structured blog post in JSON format."""
+
+        response = client.chat.completions.create(
+            model=OPENROUTER_MODEL,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.7,
+            max_tokens=4000
+        )
+        
+        text = response.choices[0].message.content
+        
+        # Clean up the response - remove control characters and markdown
+        text = ''.join(char for char in text if ord(char) >= 32 or char in '\n\r\t')
         json_str = text.replace("```json", "").replace("```", "").strip()
         
         result = json.loads(json_str)
         
         result["source_url"] = [{"name": source_name, "url": source_url}]
-        
         return result
         
-    except json.JSONDecodeError as e:
-        print(f"JSON parse error: {e}")
-        print(f"Response was: {text[:500]}")
-        return None
     except Exception as e:
-        print(f"AI generation error: {e}")
+        print(f"    OpenRouter error: {e}")
         return None
+
+
+def generate_blog_post(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
+    """Generate blog post - tries Gemini first, then OpenRouter, then returns None."""
+    
+    print(f"    Trying Gemini...")
+    result = generate_with_gemini(topic, article_content, source_name, source_url)
+    if result:
+        print(f"    ✓ Gemini succeeded")
+        return result
+    
+    print(f"    Trying OpenRouter...")
+    result = generate_with_openrouter(topic, article_content, source_name, source_url)
+    if result:
+        print(f"    ✓ OpenRouter succeeded")
+        return result
+    
+    print(f"    AI generation failed, no more providers to try")
+    return None
 
 
 def generate_mock_post(topic: str, source_name: str, source_url: str) -> Dict[str, Any]:
