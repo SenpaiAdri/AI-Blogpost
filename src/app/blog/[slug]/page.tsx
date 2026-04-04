@@ -1,15 +1,13 @@
 import Navbar from "@/components/Navbar";
 import Tags from "@/components/Tags";
+import BlogContent from "@/components/BlogContent";
 import { getPostBySlug, getAllPostSlugs } from "@/lib/posts";
 import { formatDate, formatSource } from "@/lib/utils";
 import { notFound } from "next/navigation";
-import Markdown from "react-markdown";
 import { Metadata } from "next";
 
-// Revalidate data every 120 seconds
 export const revalidate = 120;
 
-// Optional: Generate static paths for better performance at build time
 export async function generateStaticParams() {
   return await getAllPostSlugs();
 }
@@ -39,10 +37,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
-  // Await params
   const { slug } = await params;
 
-  // Fetch the specific post by slug
   const post = await getPostBySlug(slug);
 
   if (!post) {
@@ -56,15 +52,6 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
       <div className="w-full flex justify-center">
         <main className="w-full max-w-4xl border-x-2 border-[#6A6B70] border-dashed min-h-screen pt-24 px-4 sm:px-8 pb-20">
           <div className="max-w-3xl mx-auto space-y-5">
-            {/* Back Button
-            <Link
-              href="/"
-              className="text-gray-400 hover:text-white transition-colors text-sm flex items-center gap-2"
-            >
-              <span>&lt;</span> Back to posts
-            </Link> */}
-
-            {/* Header */}
             <header className="space-y-4">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight">
                 {post.title}
@@ -78,7 +65,6 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
               </div>
             </header>
 
-            {/* TL;DR Section */}
             {post.tldr && post.tldr.length > 0 && (
               <div className="px-4">
                 <p className="text-xs sm:text-sm font-bold text-[#808080] my-2">TL;DR</p>
@@ -93,19 +79,8 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
               </div>
             )}
 
-            {/* Main Content */}
-            <article className="max-w-none text-white leading-relaxed space-y-4 mt-10">
-              <Markdown components={{
-                p: ({ children }) => <p className="text-white">{children}</p>,
-                h1: ({ children }) => <h1 className="text-2xl font-bold text-white">{children}</h1>,
-                h2: ({ children }) => <h2 className="text-xl font-bold text-white">{children}</h2>,
-                h3: ({ children }) => <h3 className="text-lg font-bold text-white">{children}</h3>,
-                h4: ({ children }) => <h4 className="text-base font-bold text-white">{children}</h4>,
-                h5: ({ children }) => <h5 className="text-sm font-bold text-white">{children}</h5>
-              }}>{post.content || ""}</Markdown>
-            </article>
+            <BlogContent content={post.content || ""} />
 
-            {/* Sources Footer */}
             {post.source_url && post.source_url.length > 0 && (
               <div className="pt-8 border-t border-[#393A41] mt-12">
                 {post.source_url.length > 1 ? (

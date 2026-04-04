@@ -1,6 +1,7 @@
 import os
 import json
 import re
+import html
 import google.generativeai as genai
 from openai import OpenAI
 from typing import Optional, Dict, Any, List
@@ -39,10 +40,13 @@ The output must be a valid JSON object with the following schema:
 }
 
 Guidelines:
-- Content should be in Markdown format with proper headings
-- Tone: Professional, enthusiastic, yet critical/technical
-- Include code examples if relevant
-- No introductory text, just the JSON
+- Content should be in Markdown format with proper headings (## Heading)
+- Use proper markdown code fences: ```python for code blocks, NOT "python" on its own line
+- Use standard markdown tables with proper header row and separator row (|---|---|)
+- Use actual characters, NEVER use HTML entities like &amp; &lt; &gt; &#x27; &#39; - use ' < > &
+- Do NOT repeat the title in the content
+- Do NOT include leading # in content - use ## for main sections
+- No introductory text, just the JSON object
 - Make the content informative and useful for developers"""
 
 KEYWORD_MAP = {
@@ -132,6 +136,136 @@ def get_cover_image(title: str, content: str = "") -> str:
     return images[index]
 
 
+def recover_json(text: str) -> Optional[Dict[str, Any]]:
+    """Attempt to recover valid JSON from malformed AI response."""
+    text = text.strip()
+    
+    text = re.sub(r'^```json\s*', '', text)
+    text = re.sub(r'^```\w*\s*', '', text)
+    text = re.sub(r'^```\s*', '', text)
+    text = re.sub(r'```$', '', text)
+    text = text.replace("```", "")
+    
+    text = re.sub(r'^Here is the JSON:.*?^\{', '{', text, flags=re.MULTILINE | re.DOTALL)
+    text = re.sub(r'^Here is the.*?:.*?^\{', '{', text, flags=re.MULTILINE | re.DOTALL)
+    text = re.sub(r'^\{.*', lambda m: m.group(0), text, flags=re.MULTILINE)
+    
+    text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]', '', text)
+    
+    text = re.sub(r'\\(?!["\\/bfnrtu])', r'\\\\', text)
+    
+    text = re.sub(r',\s*\]', ']', text)
+    text = re.sub(r',\s*\}', '}', text)
+    
+    try:
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+    
+    match = re.search(r'\{[\s\S]*\}', text)
+    if match:
+        try:
+            return json.loads(match.group(0))
+        except json.JSONDecodeError:
+            pass
+    
+    try:
+        text = "{" + text.split("{", 1)[1]
+        text = text.rsplit("}", 1)[0] + "}"
+        return json.loads(text)
+    except (json.JSONDecodeError, IndexError):
+        pass
+    
+    return None
+
+
+def fix_code_blocks(content: str) -> str:
+    """Fix malformed code blocks in markdown."""
+    content = re.sub(r'\n(python)\n', r'\n```python\n', content)
+    content = re.sub(r'\n(javascript)\n', r'\n```javascript\n', content)
+    content = re.sub(r'\n(js)\n', r'\n```javascript\n', content)
+    content = re.sub(r'\n(typescript)\n', r'\n```typescript\n', content)
+    content = re.sub(r'\n(ts)\n', r'\n```typescript\n', content)
+    content = re.sub(r'\n(bash)\n', r'\n```bash\n', content)
+    content = re.sub(r'\n(shell)\n', r'\n```bash\n', content)
+    content = re.sub(r'\n(json)\n', r'\n```json\n', content)
+    content = re.sub(r'\n(sql)\n', r'\n```sql\n', content)
+    content = re.sub(r'\n(html)\n', r'\n```html\n', content)
+    content = re.sub(r'\n(css)\n', r'\n```css\n', content)
+    content = re.sub(r'\n(java)\n', r'\n```java\n', content)
+    content = re.sub(r'\n(c\+\+)\n', r'\n```cpp\n', content)
+    content = re.sub(r'\n(cpp)\n', r'\n```cpp\n', content)
+    content = re.sub(r'\n(rust)\n', r'\n```rust\n', content)
+    content = re.sub(r'\n(go)\n', r'\n```go\n', content)
+    content = re.sub(r'\n(golang)\n', r'\n```go\n', content)
+    
+    content = re.sub(r'\n```python\n\n', '\n```python\n', content)
+    content = re.sub(r'\n```javascript\n\n', '\n```javascript\n', content)
+    content = re.sub(r'\n```bash\n\n', '\n```bash\n', content)
+    
+    return content
+
+
+def fix_tables(content: str) -> str:
+    """Fix common issues with markdown tables."""
+    lines = content.split('\n')
+    fixed_lines = []
+    
+    i = 0
+    while i < len(lines):
+        line = lines[i]
+        
+        if '|' in line and not line.strip().startswith('|'):
+            table_start = i
+            header_line = line
+            
+            if i + 1 < len(lines) and '|' in lines[i + 1]:
+                sep_line = lines[i + 1]
+                
+                if not re.match(r'^\|[\s\-:|]*\|', sep_line):
+                    cols = header_line.count('|')
+                    sep_line = '|' + '---|' * cols
+            
+            fixed_lines.append(header_line)
+            fixed_lines.append(sep_line)
+            i += 2
+            
+            while i < len(lines) and '|' in lines[i]:
+                fixed_lines.append(lines[i])
+                i += 1
+        else:
+            fixed_lines.append(line)
+            i += 1
+    
+    return '\n'.join(fixed_lines)
+
+
+def sanitize_ai_content(title: str, content: str) -> str:
+    """Sanitize AI-generated content to fix common issues."""
+    content = html.unescape(content)
+    
+    content = re.sub(r'^#+\s*' + re.escape(title) + r'\s*$', '', content, flags=re.MULTILINE)
+    
+    content = re.sub(r'^' + re.escape(title) + r'\s*$', '', content, flags=re.MULTILINE)
+    
+    title_words = title.lower().split()
+    if len(title_words) >= 3:
+        first_3 = ' '.join(title_words[:3])
+        content = re.sub(r'^#+\s*' + re.escape(first_3) + r'\s*$', '', content, flags=re.MULTILINE)
+    
+    content = fix_code_blocks(content)
+    
+    content = fix_tables(content)
+    
+    content = re.sub(r'\n{3,}', '\n\n', content)
+    
+    content = re.sub(r' +$', '', content, flags=re.MULTILINE)
+    
+    content = content.strip()
+    
+    return content
+
+
 def generate_with_gemini(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
     """Generate blog post using Google Gemini."""
     if not GOOGLE_API_KEY:
@@ -162,8 +296,16 @@ Generate a compelling, well-structured blog post in JSON format."""
         output_tokens = response.usage_metadata.candidates_token_count if hasattr(response, 'usage_metadata') else estimate_tokens(text)
         cost_tracker.track_request(GEMINI_MODEL, input_tokens, output_tokens)
         
-        json_str = text.replace("```json", "").replace("```", "").strip()
-        result = json.loads(json_str)
+        result = recover_json(text)
+        if not result:
+            logger.warning(f"    Failed to parse JSON response")
+            return None
+        
+        if "content" in result:
+            result["content"] = sanitize_ai_content(
+                result.get("title", topic),
+                result["content"]
+            )
         
         result["source_url"] = [{"name": source_name, "url": source_url}]
         result["cover_image"] = get_cover_image(result.get("title", topic), result.get("content", ""))
@@ -215,19 +357,16 @@ Generate a compelling, well-structured blog post in JSON format."""
         output_tokens = response.usage.completion_tokens if hasattr(response, 'usage') else estimate_tokens(text)
         cost_tracker.track_request(OPENROUTER_MODEL, input_tokens, output_tokens)
         
-        # Remove markdown code blocks and control characters
-        text = text.replace("```json", "").replace("```", "")
-        text = ''.join(char for char in text if ord(char) >= 32 or char in '\n\r\t')
-        text = text.strip()
-        
-        # Find and extract JSON between { and }
-        json_match = re.search(r'\{[\s\S]*\}', text)
-        if not json_match:
-            logger.warning(f"    No JSON found in response")
+        result = recover_json(text)
+        if not result:
+            logger.warning(f"    Failed to parse JSON response")
             return None
-            
-        json_str = json_match.group(0)
-        result = json.loads(json_str)
+        
+        if "content" in result:
+            result["content"] = sanitize_ai_content(
+                result.get("title", topic),
+                result["content"]
+            )
         
         result["source_url"] = [{"name": source_name, "url": source_url}]
         result["cover_image"] = get_cover_image(result.get("title", topic), result.get("content", ""))
