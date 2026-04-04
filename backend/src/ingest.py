@@ -48,6 +48,7 @@ def fetch_feed(feed_config: dict) -> List[NewsItem]:
             
             try:
                 pub_date = datetime.fromisoformat(pub_date_str.replace("Z", "+00:00"))
+                pub_date = pub_date.replace(tzinfo=None)
             except:
                 pub_date = datetime.now()
             
