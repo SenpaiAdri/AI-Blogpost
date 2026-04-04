@@ -4,6 +4,10 @@ import re
 import time
 from datetime import datetime
 from typing import List, Set, Optional, Dict
+from dotenv import load_dotenv
+
+env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+load_dotenv(env_path)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -20,16 +24,13 @@ logger = get_logger("ingest")
 
 def validate_environment() -> bool:
     """Validate all required environment variables at startup."""
-    required_vars = ["SUPABASE_URL", "SUPABASE_SERVICE_KEY"]
-    optional_vars = ["GOOGLE_API_KEY", "OPEN_ROUTER_API_KEY"]
+    if not os.getenv("SUPABASE_URL"):
+        logger.error("Missing required environment variables: SUPABASE_URL")
+        return False
     
-    missing_required = []
-    for var in required_vars:
-        if not os.getenv(var):
-            missing_required.append(var)
-    
-    if missing_required:
-        logger.error(f"Missing required environment variables: {', '.join(missing_required)}")
+    has_supabase_key = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+    if not has_supabase_key:
+        logger.error("Missing required environment variables: SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY")
         return False
     
     has_any_ai_key = os.getenv("GOOGLE_API_KEY") or os.getenv("OPEN_ROUTER_API_KEY")
@@ -276,6 +277,7 @@ def batch_save_posts(client, posts_data: List[Dict]) -> bool:
                         tag_map[slug] = existing.data[0]["id"]
         
         posts_to_insert = []
+        post_tags_list = []
         for post_data in posts_data:
             post_tags = []
             if post_data.get("tags"):
@@ -285,19 +287,20 @@ def batch_save_posts(client, posts_data: List[Dict]) -> bool:
                     if slug in tag_map:
                         post_tags.append(tag_map[slug])
             
-            posts_to_insert.append({
+            post_data_clean = {
                 "title": post_data["title"],
                 "slug": post_data["slug"],
                 "content": post_data.get("content", ""),
                 "excerpt": post_data.get("excerpt", ""),
                 "tldr": post_data.get("tldr", []),
                 "source_url": post_data.get("source_url", []),
-                "ai_model": post_data.get("ai_model", "gemini-2.0-flash"),
+                "ai_model": post_data.get("ai_model", "gemini-2.5-flash"),
                 "is_published": True,
                 "published_at": datetime.now().isoformat(),
-                "cover_image": post_data.get("cover_image", "https://images.unsplash.com/photo-1677442136019-21780ecad995"),
-                "_tag_ids": post_tags
-            })
+                "cover_image": post_data.get("cover_image", "https://images.unsplash.com/photo-1677442136019-21780ecad995")
+            }
+            posts_to_insert.append(post_data_clean)
+            post_tags_list.append(post_tags)
         
         response = client.from_("posts").insert(posts_to_insert).execute()
         
@@ -308,7 +311,7 @@ def batch_save_posts(client, posts_data: List[Dict]) -> bool:
         post_tags_to_insert = []
         for i, post in enumerate(response.data):
             post_id = post["id"]
-            tag_ids = posts_to_insert[i].get("_tag_ids", [])
+            tag_ids = post_tags_list[i] if i < len(post_tags_list) else []
             for tag_id in tag_ids:
                 post_tags_to_insert.append({"post_id": post_id, "tag_id": tag_id})
         
@@ -369,6 +372,7 @@ def main():
             logger.error(f"    Error processing {item.title}: {e}")
             continue
     
+    success_count = 0
     if pending_posts:
         logger.info(f"    Inserting {len(pending_posts)} posts in batch...")
         batch_success = batch_save_posts(client, pending_posts)

@@ -18,10 +18,103 @@ OPENROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
-GEMINI_MODEL = "gemini-2.0-flash"
-FALLBACK_MODEL = "google/gemma-3n-e4"
-OPENROUTER_MODEL = "google/gemma-3n-e4"
+GEMINI_MODEL = "gemini-2.5-flash"
+FALLBACK_MODEL = "google/gemma-3-27b-it"
+OPENROUTER_MODEL = "google/gemma-3-27b-it"
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+SYSTEM_PROMPT = """You are an expert tech blogger for a site called "AI Blogpost".
+Your task is to write a high-quality, engaging blog post about the latest AI news.
+
+Output Format: JSON only
+The output must be a valid JSON object with the following schema:
+{
+  "title": "Catchy and descriptive title",
+  "slug": "kebab-case-slug-for-url",
+  "tldr": ["Bullet point 1", "Bullet point 2", "Bullet point 3"],
+  "content": "Full markdown content...",
+  "excerpt": "Short teaser sentence (max 200 chars)",
+  "tags": ["Tag1", "Tag2", "Tag3"],
+  "source_url": [{"name": "Source Name", "url": "https://source.url"}]
+}
+
+Guidelines:
+- Content should be in Markdown format with proper headings
+- Tone: Professional, enthusiastic, yet critical/technical
+- Include code examples if relevant
+- No introductory text, just the JSON
+- Make the content informative and useful for developers"""
+
+KEYWORD_MAP = {
+    "nvidia": "gpu",
+    "gpu": "gpu",
+    "cuda": "gpu",
+    "llama": "llm",
+    "gpt": "llm",
+    "chatgpt": "llm",
+    "claude": "llm",
+    "gemini": "llm",
+    "openai": "llm",
+    "anthropic": "llm",
+    "mistral": "llm",
+    "model": "llm",
+    "training": "ml",
+    "machine learning": "ml",
+    "deep learning": "ml",
+    "neural": "ml",
+    "robot": "robotics",
+    "humanoid": "robotics",
+    "automation": "robotics",
+    "agent": "agent",
+    "autonomous": "agent",
+    "research": "research",
+    "paper": "research",
+    "benchmark": "research",
+    "startup": "startup",
+    "funding": "startup",
+    "估值": "startup",
+    "芯片": "hardware",
+    "processor": "hardware",
+    "hardware": "hardware",
+    "tpu": "hardware",
+    "quantum": "quantum",
+}
+
+COVER_IMAGES = {
+    "llm": [
+        "https://images.unsplash.com/photo-1677442136019-21780ecad995",
+        "https://images.unsplash.com/photo-1620712943543-bcc4688e7485",
+    ],
+    "gpu": [
+        "https://images.unsplash.com/photo-1555949963-ff9fe0c870eb",
+    ],
+    "ml": [
+        "https://images.unsplash.com/photo-1555949963-aa79dcee981c",
+    ],
+    "robotics": [
+        "https://images.unsplash.com/photo-1485827404703-89b55fcc595e",
+    ],
+    "agent": [
+        "https://images.unsplash.com/photo-1535378917042-10a22c95931a",
+    ],
+    "research": [
+        "https://images.unsplash.com/photo-1507413245164-6160d8298b31",
+    ],
+    "startup": [
+        "https://images.unsplash.com/photo-1559136555-9303baea8ebd",
+    ],
+    "hardware": [
+        "https://images.unsplash.com/photo-1518770660439-4636190af475",
+    ],
+    "quantum": [
+        "https://images.unsplash.com/photo-1635070041078-e363dbe005cb",
+    ],
+    "default": [
+        "https://images.unsplash.com/photo-1677442136019-21780ecad995",
+        "https://images.unsplash.com/photo-1620712943543-bcc4688e7485",
+        "https://images.unsplash.com/photo-1535378917042-10a22c95931a",
+    ],
+}
 
 
 def get_cover_image(title: str, content: str = "") -> str:
