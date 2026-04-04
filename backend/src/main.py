@@ -1,5 +1,6 @@
 import os
 import sys
+import re
 import time
 from datetime import datetime
 
@@ -33,7 +34,9 @@ def save_post(client, post_data: dict) -> bool:
         
         if post_data.get("tags"):
             for tag_name in post_data["tags"]:
-                slug = tag_name.lower().replace(" ", "-").replace("[^a-z0-9-]", "")
+                slug = tag_name.lower().replace(" ", "-")
+                slug = re.sub(r'[^a-z0-9-]', '', slug)
+                slug = re.sub(r'-+', '-', slug).strip('-')
                 
                 tag_response = client.from_("tags").upsert(
                     {"name": tag_name, "slug": slug},

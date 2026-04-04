@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import google.generativeai as genai
 from typing import Optional, Dict, Any
 from datetime import datetime
@@ -76,7 +77,9 @@ Generate a compelling, well-structured blog post in JSON format."""
 def generate_mock_post(topic: str, source_name: str, source_url: str) -> Dict[str, Any]:
     """Generate a fallback mock post when AI fails."""
     timestamp = int(datetime.now().timestamp())
-    clean_topic = topic.lower().replace(" ", "-").replace("[^a-z0-9-]", "")
+    clean_topic = topic.lower().replace(" ", "-")
+    clean_topic = re.sub(r'[^a-z0-9-]', '', clean_topic)
+    clean_topic = re.sub(r'-+', '-', clean_topic).strip('-')
     slug = f"{clean_topic[:50]}-{timestamp}"
     
     return {
@@ -112,8 +115,5 @@ Stay tuned for more detailed coverage as more information becomes available.
 
 
 if __name__ == "__main__":
-    test_topic = "OpenAI announces GPT-5"
-    test_content = "OpenAI has announced the next generation of GPT models..."
-    
-    result = generate_blog_post(test_topic, test_content, "OpenAI", "https://openai.com")
+    result = generate_mock_post("OpenAI announces GPT-5", "OpenAI", "https://openai.com")
     print(json.dumps(result, indent=2) if result else "Generation failed")
