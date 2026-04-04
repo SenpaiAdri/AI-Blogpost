@@ -111,16 +111,29 @@ Generate a compelling, well-structured blog post in JSON format."""
         )
         
         text = response.choices[0].message.content
+        print(f"    Raw response length: {len(text)}")
         
-        # Clean up the response - remove control characters and markdown
+        # Remove markdown code blocks and control characters
+        text = text.replace("```json", "").replace("```", "")
         text = ''.join(char for char in text if ord(char) >= 32 or char in '\n\r\t')
-        json_str = text.replace("```json", "").replace("```", "").strip()
+        text = text.strip()
         
+        # Find and extract JSON between { and }
+        json_match = re.search(r'\{[\s\S]*\}', text)
+        if not json_match:
+            print(f"    No JSON found in response")
+            return None
+            
+        json_str = json_match.group(0)
         result = json.loads(json_str)
         
         result["source_url"] = [{"name": source_name, "url": source_url}]
         return result
         
+    except json.JSONDecodeError as e:
+        print(f"    JSON parse error: {e}")
+        print(f"    Response preview: {text[:200]}...")
+        return None
     except Exception as e:
         print(f"    OpenRouter error: {e}")
         return None
