@@ -22,6 +22,25 @@ interface BlogContentProps {
   content: string;
 }
 
+function sanitizeLinkHref(href?: string): string | null {
+  if (!href) return null;
+
+  if (href.startsWith("/") || href.startsWith("#") || href.startsWith("?")) {
+    return href;
+  }
+
+  try {
+    const parsed = new URL(href);
+    const protocol = parsed.protocol.toLowerCase();
+    if (protocol === "http:" || protocol === "https:" || protocol === "mailto:") {
+      return href;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function BlogContent({ content }: BlogContentProps) {
   const [mounted, setMounted] = useState(false);
 
@@ -41,10 +60,14 @@ export default function BlogContent({ content }: BlogContentProps) {
           h4: ({ children }) => <h4 className="text-base font-bold text-white mt-4 mb-2">{children}</h4>,
           h5: ({ children }) => <h5 className="text-sm font-bold text-white text-wrap mt-3 mb-2">{children}</h5>,
           a: ({ href, children }) => {
-            const isExternal = href?.startsWith('http');
+            const safeHref = sanitizeLinkHref(href);
+            if (!safeHref) {
+              return <span className="text-gray-400 underline">{children}</span>;
+            }
+            const isExternal = safeHref.startsWith("http");
             return (
               <a
-                href={href}
+                href={safeHref}
                 target={isExternal ? '_blank' : undefined}
                 rel={isExternal ? 'noopener noreferrer' : undefined}
                 className="text-blue-400 hover:text-blue-300 underline"

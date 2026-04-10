@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
 
 from logger import get_logger
+from rate_limit import wait_for_url
 
 logger = get_logger("ingest")
 
@@ -45,6 +46,7 @@ AI_KEYWORDS = [
 def fetch_feed(feed_config: dict) -> List[NewsItem]:
     """Fetch a single RSS feed and return news items."""
     try:
+        wait_for_url(feed_config["url"])
         feed = feedparser.parse(feed_config["url"])
         
         items = []

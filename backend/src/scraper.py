@@ -3,6 +3,7 @@ from typing import Optional
 from bs4 import BeautifulSoup
 
 from logger import get_logger
+from rate_limit import wait_for_url
 
 logger = get_logger("scraper")
 
@@ -11,6 +12,7 @@ def fetch_with_jina(url: str) -> Optional[str]:
     """Fetch article content using Jina Reader API."""
     try:
         jina_url = f"https://r.jina.ai/{url}"
+        wait_for_url(jina_url)
         response = requests.get(jina_url, timeout=30)
         
         if response.status_code == 200:
@@ -27,6 +29,7 @@ def fetch_with_bs4(url: str) -> Optional[str]:
         headers = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
         }
+        wait_for_url(url)
         response = requests.get(url, headers=headers, timeout=30)
         
         if response.status_code == 200:
