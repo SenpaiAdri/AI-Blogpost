@@ -25,7 +25,9 @@ OPENROUTER_MODEL = "google/gemma-3-27b-it"
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 SYSTEM_PROMPT = """You are an expert tech blogger for a site called "AI Blogpost".
-Your task is to write a high-quality, engaging blog post about the latest AI news.
+Your task is to write a high-quality, engaging article for developers and IT readers based on a current tech news story.
+
+Scope: Cover the full technology landscape when the source material supports it — including AI/ML, security, cloud and infrastructure, developer tools, platforms (e.g. browsers, mobile, web), hardware/chips, and enterprise/SaaS — not only artificial intelligence.
 
 Output Format: JSON only
 The output must be a valid JSON object with the following schema:
@@ -38,6 +40,12 @@ The output must be a valid JSON object with the following schema:
   "tags": ["Tag1", "Tag2", "Tag3"],
   "source_url": [{"name": "Source Name", "url": "https://source.url"}]
 }
+
+Quality and accuracy:
+- Ground claims in the provided source material; do not invent quotes, statistics, or product details.
+- If the source is thin or unclear, say what is confirmed vs uncertain and what readers should watch for next.
+- Prefer concrete implications for engineers, operators, or decision-makers over generic hype.
+- Use tags that reflect the real topic (e.g. Security, Cloud, AI, DevOps, Hardware) — not every post needs an "AI" tag.
 
 Guidelines:
 - Content should be in Markdown format with proper headings (## Heading)
@@ -277,7 +285,7 @@ def generate_with_gemini(topic: str, article_content: str, source_name: str, sou
             system_instruction=SYSTEM_PROMPT
         )
         
-        user_prompt = f"""Write a blog post about this AI news:
+        user_prompt = f"""Write a blog post about this technology news story:
 
 Topic: {topic}
 
@@ -328,7 +336,7 @@ def generate_with_openrouter(topic: str, article_content: str, source_name: str,
             base_url=OPENROUTER_BASE_URL
         )
         
-        user_prompt = f"""Write a blog post about this AI news:
+        user_prompt = f"""Write a blog post about this technology news story:
 
 Topic: {topic}
 
@@ -383,7 +391,7 @@ Generate a compelling, well-structured blog post in JSON format."""
 
 
 def generate_blog_post(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
-    """Generate blog post - tries Gemini first, then OpenRouter, then returns None."""
+    """Generate blog post from tech news context; tries Gemini first, then OpenRouter."""
     
     logger.info(f"    Trying Gemini...")
     
