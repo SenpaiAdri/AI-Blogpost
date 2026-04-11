@@ -1,3 +1,4 @@
+import difflib
 import feedparser
 import re
 import threading
@@ -9,6 +10,7 @@ from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from logger import get_logger
 from rate_limit import wait_for_url
+from rss_feeds import RSS_FEEDS
 
 logger = get_logger("ingest")
 
@@ -23,29 +25,6 @@ class NewsItem:
     source: str
     pub_date: datetime
 
-
-RSS_FEEDS = [
-    {"name": "The Verge", "url": "https://www.theverge.com/rss/index.xml"},
-    {"name": "TechCrunch", "url": "https://techcrunch.com/feed/"},
-    {"name": "Ars Technica", "url": "https://feeds.arstechnica.com/arstechnica/index"},
-    {"name": "Wired", "url": "https://www.wired.com/feed/rss"},
-    {"name": "Engadget", "url": "https://www.engadget.com/rss.xml"},
-    {"name": "CNET", "url": "https://www.cnet.com/rss/news/"},
-    {"name": "ZDNet", "url": "https://www.zdnet.com/news/rss.xml"},
-    {"name": "BBC Technology", "url": "https://feeds.bbci.co.uk/news/technology/rss.xml"},
-    {"name": "The Register", "url": "https://www.theregister.com/headlines.rss"},
-    {"name": "BleepingComputer", "url": "https://www.bleepingcomputer.com/feed/"},
-    {"name": "Krebs on Security", "url": "https://krebsonsecurity.com/feed/"},
-    {"name": "GitHub Blog", "url": "https://github.blog/feed/"},
-    {"name": "AWS Blog", "url": "https://aws.amazon.com/blogs/aws/feed/"},
-    {"name": "OpenAI Blog", "url": "https://openai.com/blog/rss.xml"},
-    {"name": "MIT Tech Review", "url": "https://www.technologyreview.com/feed/"},
-    {"name": "Hacker News Best", "url": "https://hnrss.org/best"},
-    {"name": "Google AI Blog", "url": "https://blog.google/technology/ai/rss/"},
-    {"name": "DeepMind Blog", "url": "https://deepmind.google/rss/"},
-    {"name": "Anthropic", "url": "https://www.anthropic.com/rss.xml"},
-    {"name": "Hacker News", "url": "https://news.ycombinator.com/rss"},
-]
 
 # Title/snippet must match at least one keyword using word boundaries (see _TECH_KEYWORD_PATTERNS).
 # Avoid very short ambiguous tokens (e.g. "it", "go").
@@ -94,6 +73,32 @@ _TECH_KEYWORD_PATTERNS = [
     if kw.strip()
 ]
 
+# Near-duplicate headlines across syndicated feeds (wording differs slightly).
+_FUZZY_TITLE_RATIO = 0.86
+_FUZZY_MIN_CHARS = 28
+_FUZZY_MIN_WORDS = 4
+
+
+def _title_word_count(normalized: str) -> int:
+    return len(normalized.split()) if normalized else 0
+
+
+def titles_are_fuzzy_duplicates(a: str, b: str) -> bool:
+    """True if normalized titles are likely the same story (SequenceMatcher)."""
+    if not a or not b or a == b:
+        return False
+    la, lb = len(a), len(b)
+    if not la or not lb:
+        return False
+    shorter, longer = min(la, lb), max(la, lb)
+    if shorter / longer < 0.65:
+        return False
+    if la < _FUZZY_MIN_CHARS or lb < _FUZZY_MIN_CHARS:
+        return False
+    if _title_word_count(a) < _FUZZY_MIN_WORDS or _title_word_count(b) < _FUZZY_MIN_WORDS:
+        return False
+    return difflib.SequenceMatcher(None, a, b).ratio() >= _FUZZY_TITLE_RATIO
+
 
 def normalize_feed_url(url: str) -> str:
     """Strip tracking params and trivial differences for cross-feed deduplication."""
@@ -129,10 +134,11 @@ def normalize_title_for_dedupe(title: str) -> str:
 def dedupe_news_items(items: List[NewsItem]) -> List[NewsItem]:
     """
     Drop repeats across feeds. Assumes items are sorted newest-first.
-    Skips duplicate normalized URLs or identical normalized titles.
+    Skips duplicate normalized URLs, identical normalized titles, or fuzzy title matches.
     """
     seen_urls: set = set()
     seen_titles: set = set()
+    kept_title_norms: List[str] = []
     out: List[NewsItem] = []
     for item in items:
         key_url = normalize_feed_url(item.link)
@@ -143,9 +149,13 @@ def dedupe_news_items(items: List[NewsItem]) -> List[NewsItem]:
         nt = normalize_title_for_dedupe(item.title)
         if nt and nt in seen_titles:
             continue
+        if nt:
+            if any(titles_are_fuzzy_duplicates(nt, prev) for prev in kept_title_norms):
+                continue
         seen_urls.add(key_url)
         if nt:
             seen_titles.add(nt)
+            kept_title_norms.append(nt)
         out.append(item)
     return out
 

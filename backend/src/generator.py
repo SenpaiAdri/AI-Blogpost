@@ -58,6 +58,37 @@ Guidelines:
 - Make the content informative and useful for developers"""
 
 KEYWORD_MAP = {
+    # Security (checked before broad matches like "apple")
+    "ransomware": "security",
+    "cybersecurity": "security",
+    "vulnerability": "security",
+    "breach": "security",
+    "malware": "security",
+    "phishing": "security",
+    "zero-day": "security",
+    "zeroday": "security",
+    "encryption": "security",
+    "firewall": "security",
+    "exploit": "security",
+    # Cloud & platforms
+    "serverless": "cloud",
+    "kubernetes": "devops",
+    "docker": "devops",
+    "devops": "devops",
+    "terraform": "devops",
+    "ansible": "devops",
+    "jenkins": "devops",
+    "ci/cd": "devops",
+    "github actions": "devops",
+    "nginx": "devops",
+    "cloudflare": "cloud",
+    "vercel": "cloud",
+    "netlify": "cloud",
+    "aws": "cloud",
+    "azure": "cloud",
+    "gcp": "cloud",
+    "datacenter": "cloud",
+    "data center": "cloud",
     "nvidia": "gpu",
     "gpu": "gpu",
     "cuda": "gpu",
@@ -93,6 +124,21 @@ KEYWORD_MAP = {
 }
 
 COVER_IMAGES = {
+    "security": [
+        "https://images.unsplash.com/photo-1563986768609-322da13575f3",
+        "https://images.unsplash.com/photo-1633265486064-086b219458ec",
+        "https://images.unsplash.com/photo-1550751827-4bd374c3f58b",
+    ],
+    "cloud": [
+        "https://images.unsplash.com/photo-1451187580459-43490279c0fa",
+        "https://images.unsplash.com/photo-1544197150-b99a580bb7a8",
+        "https://images.unsplash.com/photo-1451188502541-7bb938c7da26",
+    ],
+    "devops": [
+        "https://images.unsplash.com/photo-1558494949-ef010cbdcc31",
+        "https://images.unsplash.com/photo-1667372393119-3d4c48d07fc9",
+        "https://images.unsplash.com/photo-1555066931-4365d14bab8c",
+    ],
     "llm": [
         "https://images.unsplash.com/photo-1677442136019-21780ecad995",
         "https://images.unsplash.com/photo-1620712943543-bcc4688e7485",
