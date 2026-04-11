@@ -15,6 +15,7 @@ from database import get_supabase_client, get_all_existing_urls
 from ingest import get_latest_news, NewsItem
 from scraper import scrape_article
 from generator import generate_blog_post, generate_mock_post
+from ai_audit import log_ai_generation_result
 from logger import get_logger
 from security import validate_env_vars, sanitize_text, sanitize_html, validate_url, validate_ai_output, MAX_TITLE_LENGTH
 from metrics import cost_tracker
@@ -159,8 +160,27 @@ def process_news_item(client, item: NewsItem, existing_urls: set, max_retries: i
                 validation_error = validate_ai_output(post_data)
                 if validation_error:
                     logger.error(f"    Mock post also invalid, skipping")
+                    log_ai_generation_result(
+                        client=client,
+                        topic=item.title,
+                        source_name=item.source,
+                        source_url=item.link,
+                        status="failed",
+                        output_json=post_data,
+                        failure_reason=f"validation_failed: {validation_error}",
+                        validated=False,
+                    )
                     return False
             
+            log_ai_generation_result(
+                client=client,
+                topic=item.title,
+                source_name=item.source,
+                source_url=item.link,
+                status="generated",
+                output_json=post_data,
+                validated=True,
+            )
             logger.debug(f"    Saving to database...")
             success = save_post(client, post_data)
             
@@ -231,8 +251,27 @@ def process_news_item_for_batch(client, item: NewsItem, existing_urls: set, max_
                 validation_error = validate_ai_output(post_data)
                 if validation_error:
                     logger.error(f"    Mock post also invalid, skipping")
+                    log_ai_generation_result(
+                        client=client,
+                        topic=item.title,
+                        source_name=item.source,
+                        source_url=item.link,
+                        status="failed",
+                        output_json=post_data,
+                        failure_reason=f"validation_failed: {validation_error}",
+                        validated=False,
+                    )
                     return None
             
+            log_ai_generation_result(
+                client=client,
+                topic=item.title,
+                source_name=item.source,
+                source_url=item.link,
+                status="generated",
+                output_json=post_data,
+                validated=True,
+            )
             logger.info(f"    ✓ Generated: {post_data['title'][:40]}")
             return post_data
             
