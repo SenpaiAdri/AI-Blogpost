@@ -5,7 +5,6 @@ import html
 import google.generativeai as genai
 from openai import OpenAI
 from typing import Optional, Dict, Any, List
-from datetime import datetime
 import hashlib
 
 from logger import get_logger
@@ -409,49 +408,3 @@ def generate_blog_post(topic: str, article_content: str, source_name: str, sourc
     
     logger.warning(f"    AI generation failed, no more providers to try")
     return None
-
-
-def generate_mock_post(topic: str, source_name: str, source_url: str) -> Dict[str, Any]:
-    """Generate a fallback mock post when AI fails."""
-    timestamp = int(datetime.now().timestamp())
-    clean_topic = topic.lower().replace(" ", "-")
-    clean_topic = re.sub(r'[^a-z0-9-]', '', clean_topic)
-    clean_topic = re.sub(r'-+', '-', clean_topic).strip('-')
-    slug = f"{clean_topic[:50]}-{timestamp}"
-    
-    return {
-        "title": topic,
-        "slug": slug,
-        "tldr": [
-            f"Breaking: {topic}",
-            f"Source: {source_name}",
-            "AI-powered summary unavailable"
-        ],
-        "content": f"""# {topic}
-
-*Note: This is a placeholder post due to API limitations.*
-
-## Latest Update
-
-{topic} - This is a developing story. Check back for full coverage.
-
-## Why It Matters
-
-This announcement represents a significant development in the AI space. Industry experts are closely monitoring the situation.
-
-## What's Next
-
-Stay tuned for more detailed coverage as more information becomes available.
-
-[Read more on {source_name}]({source_url})
-""",
-        "excerpt": f"Latest update on {topic} from {source_name}.",
-        "tags": ["AI", "Tech News", "Breaking"],
-        "source_url": [{"name": source_name, "url": source_url}],
-        "cover_image": get_cover_image(topic)
-    }
-
-
-if __name__ == "__main__":
-    result = generate_mock_post("OpenAI announces GPT-5", "OpenAI", "https://openai.com")
-    print(json.dumps(result, indent=2) if result else "Generation failed")

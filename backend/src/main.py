@@ -14,7 +14,8 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from database import get_supabase_client, get_all_existing_urls
 from ingest import get_latest_news, NewsItem
 from scraper import scrape_article
-from generator import generate_blog_post, generate_mock_post
+from generator import generate_blog_post
+from ai_audit import log_ai_generation_result
 from logger import get_logger
 from security import validate_env_vars, sanitize_text, sanitize_html, validate_url, validate_ai_output, MAX_TITLE_LENGTH
 from metrics import cost_tracker
@@ -35,7 +36,8 @@ def validate_environment() -> bool:
     
     has_any_ai_key = os.getenv("GOOGLE_API_KEY") or os.getenv("OPEN_ROUTER_API_KEY")
     if not has_any_ai_key:
-        logger.warning("No AI API keys found - will use mock fallback for all posts")
+        logger.error("No AI API keys found - cannot generate posts")
+        return False
     
     return True
 
@@ -146,8 +148,16 @@ def process_news_item(client, item: NewsItem, existing_urls: set, max_retries: i
                     logger.warning(f"    AI failed, retrying...")
                     time.sleep(5)
                     continue
-                logger.warning(f"    AI failed, using mock fallback...")
-                post_data = generate_mock_post(item.title, item.source, item.link)
+                logger.error("    AI generation failed after all retries, skipping")
+                log_ai_generation_result(
+                    client=client,
+                    topic=item.title,
+                    source_name=item.source,
+                    source_url=item.link,
+                    status="failed",
+                    failure_reason="ai_generation_failed",
+                )
+                return False
             
             validation_error = validate_ai_output(post_data)
             if validation_error:
@@ -155,13 +165,27 @@ def process_news_item(client, item: NewsItem, existing_urls: set, max_retries: i
                 if attempt < max_retries - 1:
                     time.sleep(3)
                     continue
-                post_data = generate_mock_post(item.title, item.source, item.link)
-                validation_error = validate_ai_output(post_data)
-                if validation_error:
-                    logger.error(f"    Mock post also invalid, skipping")
-                    return False
+                logger.error("    AI output invalid after all retries, skipping")
+                log_ai_generation_result(
+                    client=client,
+                    topic=item.title,
+                    source_name=item.source,
+                    source_url=item.link,
+                    status="failed",
+                    output_json=post_data,
+                    failure_reason=f"validation_failed: {validation_error}",
+                )
+                return False
             
             logger.debug(f"    Saving to database...")
+            log_ai_generation_result(
+                client=client,
+                topic=item.title,
+                source_name=item.source,
+                source_url=item.link,
+                status="generated",
+                output_json=post_data,
+            )
             success = save_post(client, post_data)
             
             if success:
@@ -218,8 +242,16 @@ def process_news_item_for_batch(client, item: NewsItem, existing_urls: set, max_
                     logger.warning(f"    AI failed, retrying...")
                     time.sleep(5)
                     continue
-                logger.warning(f"    AI failed, using mock fallback...")
-                post_data = generate_mock_post(item.title, item.source, item.link)
+                logger.error("    AI generation failed after all retries, skipping")
+                log_ai_generation_result(
+                    client=client,
+                    topic=item.title,
+                    source_name=item.source,
+                    source_url=item.link,
+                    status="failed",
+                    failure_reason="ai_generation_failed",
+                )
+                return None
             
             validation_error = validate_ai_output(post_data)
             if validation_error:
@@ -227,12 +259,26 @@ def process_news_item_for_batch(client, item: NewsItem, existing_urls: set, max_
                 if attempt < max_retries - 1:
                     time.sleep(3)
                     continue
-                post_data = generate_mock_post(item.title, item.source, item.link)
-                validation_error = validate_ai_output(post_data)
-                if validation_error:
-                    logger.error(f"    Mock post also invalid, skipping")
-                    return None
+                logger.error("    AI output invalid after all retries, skipping")
+                log_ai_generation_result(
+                    client=client,
+                    topic=item.title,
+                    source_name=item.source,
+                    source_url=item.link,
+                    status="failed",
+                    output_json=post_data,
+                    failure_reason=f"validation_failed: {validation_error}",
+                )
+                return None
             
+            log_ai_generation_result(
+                client=client,
+                topic=item.title,
+                source_name=item.source,
+                source_url=item.link,
+                status="generated",
+                output_json=post_data,
+            )
             logger.info(f"    ✓ Generated: {post_data['title'][:40]}")
             return post_data
             
@@ -386,7 +432,7 @@ def main():
     logger.info(f"Pipeline Complete!")
     logger.info(f"  Processed: {len(news_items)} items")
     logger.info(f"  New posts: {success_count}")
-    logger.info(f"  Skipped: {len(news_items) - success_count} (duplicates)")
+    logger.info(f"  Skipped: {len(news_items) - success_count} (duplicates/invalid/AI-failed)")
     logger.info(f"Finished at: {datetime.now().isoformat()}")
     logger.info("=" * 60)
     
