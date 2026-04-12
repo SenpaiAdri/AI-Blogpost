@@ -58,7 +58,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
               </h1>
 
               <div className="flex flex-wrap gap-4 items-center justify-between">
-                <Tags tags={post.tags || []} />
+                <Tags tags={post.tags || []} linkable />
                 <span className="text-gray-400 text-sm">
                   {formatDate(post.published_at)}
                 </span>

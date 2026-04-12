@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Poppins } from "next/font/google";
-import { Suspense } from "react";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import PageTransitionProvider from "@/components/PageTransitionProvider";
@@ -72,9 +71,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={poppins.variable}>
       <body className="antialiased">
-        <Suspense fallback={children}>
-          <PageTransitionProvider>{children}</PageTransitionProvider>
-        </Suspense>
+        <PageTransitionProvider>{children}</PageTransitionProvider>
         <SpeedInsights />
       </body>
     </html>

@@ -1,6 +1,7 @@
+import json
 import os
-import sys
 import re
+import sys
 import time
 from datetime import datetime
 from typing import List, Set, Optional, Dict
@@ -14,10 +15,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from database import get_supabase_client, get_all_existing_urls
 from ingest import get_latest_news, NewsItem
 from scraper import scrape_article
-from generator import generate_blog_post, generate_mock_post
+from generator import generate_blog_post
 from ai_audit import log_ai_generation_result
 from logger import get_logger
-from security import validate_env_vars, sanitize_text, sanitize_html, validate_url, validate_ai_output, MAX_TITLE_LENGTH
+from security import sanitize_text, validate_url, validate_ai_output, MAX_TITLE_LENGTH
 from metrics import cost_tracker
 
 logger = get_logger("ingest")
@@ -36,7 +37,8 @@ def validate_environment() -> bool:
     
     has_any_ai_key = os.getenv("GOOGLE_API_KEY") or os.getenv("OPEN_ROUTER_API_KEY")
     if not has_any_ai_key:
-        logger.warning("No AI API keys found - will use mock fallback for all posts")
+        logger.error("No AI API keys found (GOOGLE_API_KEY or OPEN_ROUTER_API_KEY required)")
+        return False
     
     return True
 
@@ -115,14 +117,27 @@ def save_post(client, post_data: dict) -> bool:
         return False
 
 
-def process_news_item(client, item: NewsItem, existing_urls: set, max_retries: int = 2) -> bool:
+def _bump_run_stat(run_stats: Optional[Dict[str, int]], key: str) -> None:
+    if run_stats is not None:
+        run_stats[key] = run_stats.get(key, 0) + 1
+
+
+def process_news_item(
+    client,
+    item: NewsItem,
+    existing_urls: set,
+    max_retries: int = 2,
+    run_stats: Optional[Dict[str, int]] = None,
+) -> bool:
     """Process a single news item: check duplicate, scrape, generate, save."""
     if not validate_url(item.link):
         logger.warning(f"  Invalid URL, skipping: {item.link}")
+        _bump_run_stat(run_stats, "skipped_invalid_url")
         return False
     
     if item.link in existing_urls:
         logger.info(f"  Skipping duplicate: {item.link}")
+        _bump_run_stat(run_stats, "skipped_duplicate_url")
         return False
     
     logger.info(f"  Processing: {item.title[:50]}...")
@@ -147,8 +162,18 @@ def process_news_item(client, item: NewsItem, existing_urls: set, max_retries: i
                     logger.warning(f"    AI failed, retrying...")
                     time.sleep(5)
                     continue
-                logger.warning(f"    AI failed, using mock fallback...")
-                post_data = generate_mock_post(item.title, item.source, item.link)
+                logger.error("    AI generation failed after all retries, skipping")
+                _bump_run_stat(run_stats, "failed_ai")
+                log_ai_generation_result(
+                    client=client,
+                    topic=item.title,
+                    source_name=item.source,
+                    source_url=item.link,
+                    status="failed",
+                    failure_reason="ai_generation_failed",
+                    validated=False,
+                )
+                return False
             
             validation_error = validate_ai_output(post_data)
             if validation_error:
@@ -156,21 +181,19 @@ def process_news_item(client, item: NewsItem, existing_urls: set, max_retries: i
                 if attempt < max_retries - 1:
                     time.sleep(3)
                     continue
-                post_data = generate_mock_post(item.title, item.source, item.link)
-                validation_error = validate_ai_output(post_data)
-                if validation_error:
-                    logger.error(f"    Mock post also invalid, skipping")
-                    log_ai_generation_result(
-                        client=client,
-                        topic=item.title,
-                        source_name=item.source,
-                        source_url=item.link,
-                        status="failed",
-                        output_json=post_data,
-                        failure_reason=f"validation_failed: {validation_error}",
-                        validated=False,
-                    )
-                    return False
+                logger.error("    AI output invalid after all retries, skipping")
+                _bump_run_stat(run_stats, "failed_validation")
+                log_ai_generation_result(
+                    client=client,
+                    topic=item.title,
+                    source_name=item.source,
+                    source_url=item.link,
+                    status="failed",
+                    output_json=post_data,
+                    failure_reason=f"validation_failed: {validation_error}",
+                    validated=False,
+                )
+                return False
             
             log_ai_generation_result(
                 client=client,
@@ -181,6 +204,7 @@ def process_news_item(client, item: NewsItem, existing_urls: set, max_retries: i
                 output_json=post_data,
                 validated=True,
             )
+            _bump_run_stat(run_stats, "generated_ok")
             logger.debug(f"    Saving to database...")
             success = save_post(client, post_data)
             
@@ -201,19 +225,28 @@ def process_news_item(client, item: NewsItem, existing_urls: set, max_retries: i
                 time.sleep(5)
                 continue
             logger.error(f"    ✗ Error processing after {max_retries} attempts: {e}")
+            _bump_run_stat(run_stats, "processing_errors")
             return False
     
     return False
 
 
-def process_news_item_for_batch(client, item: NewsItem, existing_urls: set, max_retries: int = 2) -> Optional[Dict]:
+def process_news_item_for_batch(
+    client,
+    item: NewsItem,
+    existing_urls: set,
+    max_retries: int = 2,
+    run_stats: Optional[Dict[str, int]] = None,
+) -> Optional[Dict]:
     """Process a single news item and return post data for batch saving."""
     if not validate_url(item.link):
         logger.warning(f"  Invalid URL, skipping: {item.link}")
+        _bump_run_stat(run_stats, "skipped_invalid_url")
         return None
     
     if item.link in existing_urls:
         logger.info(f"  Skipping duplicate: {item.link}")
+        _bump_run_stat(run_stats, "skipped_duplicate_url")
         return None
     
     logger.info(f"  Processing: {item.title[:50]}...")
@@ -238,8 +271,18 @@ def process_news_item_for_batch(client, item: NewsItem, existing_urls: set, max_
                     logger.warning(f"    AI failed, retrying...")
                     time.sleep(5)
                     continue
-                logger.warning(f"    AI failed, using mock fallback...")
-                post_data = generate_mock_post(item.title, item.source, item.link)
+                logger.error("    AI generation failed after all retries, skipping")
+                _bump_run_stat(run_stats, "failed_ai")
+                log_ai_generation_result(
+                    client=client,
+                    topic=item.title,
+                    source_name=item.source,
+                    source_url=item.link,
+                    status="failed",
+                    failure_reason="ai_generation_failed",
+                    validated=False,
+                )
+                return None
             
             validation_error = validate_ai_output(post_data)
             if validation_error:
@@ -247,21 +290,19 @@ def process_news_item_for_batch(client, item: NewsItem, existing_urls: set, max_
                 if attempt < max_retries - 1:
                     time.sleep(3)
                     continue
-                post_data = generate_mock_post(item.title, item.source, item.link)
-                validation_error = validate_ai_output(post_data)
-                if validation_error:
-                    logger.error(f"    Mock post also invalid, skipping")
-                    log_ai_generation_result(
-                        client=client,
-                        topic=item.title,
-                        source_name=item.source,
-                        source_url=item.link,
-                        status="failed",
-                        output_json=post_data,
-                        failure_reason=f"validation_failed: {validation_error}",
-                        validated=False,
-                    )
-                    return None
+                logger.error("    AI output invalid after all retries, skipping")
+                _bump_run_stat(run_stats, "failed_validation")
+                log_ai_generation_result(
+                    client=client,
+                    topic=item.title,
+                    source_name=item.source,
+                    source_url=item.link,
+                    status="failed",
+                    output_json=post_data,
+                    failure_reason=f"validation_failed: {validation_error}",
+                    validated=False,
+                )
+                return None
             
             log_ai_generation_result(
                 client=client,
@@ -272,6 +313,7 @@ def process_news_item_for_batch(client, item: NewsItem, existing_urls: set, max_
                 output_json=post_data,
                 validated=True,
             )
+            _bump_run_stat(run_stats, "generated_ok")
             logger.info(f"    ✓ Generated: {post_data['title'][:40]}")
             return post_data
             
@@ -281,6 +323,7 @@ def process_news_item_for_batch(client, item: NewsItem, existing_urls: set, max_
                 time.sleep(5)
                 continue
             logger.error(f"    ✗ Error processing after {max_retries} attempts: {e}")
+            _bump_run_stat(run_stats, "processing_errors")
             return None
     
     return None
@@ -370,21 +413,37 @@ def main():
         logger.error("Environment validation failed. Exiting.")
         sys.exit(1)
     
+    started_at = datetime.now().isoformat()
+    run_stats: Dict[str, int] = {}
+    
     logger.info("=" * 60)
     logger.info("AI Blog Post Ingestion Pipeline")
-    logger.info(f"Started at: {datetime.now().isoformat()}")
+    logger.info(f"Started at: {started_at}")
     logger.info("=" * 60)
     
     logger.info("[1/4] Connecting to Supabase...")
     client = get_supabase_client()
     logger.info("    Connected")
     
-    logger.info("[2/4] Fetching latest AI news...")
+    logger.info("[2/4] Fetching latest tech news...")
     news_items = get_latest_news(limit=5)
-    logger.info(f"    Found {len(news_items)} AI news items")
+    logger.info(f"    Found {len(news_items)} candidate items")
     
     if not news_items:
         logger.warning("    No news found. Exiting.")
+        logger.info(
+            "pipeline_summary %s",
+            json.dumps(
+                {
+                    "schema_version": 1,
+                    "started_at": started_at,
+                    "finished_at": datetime.now().isoformat(),
+                    "candidates": 0,
+                    "new_posts_saved": 0,
+                    "note": "no_feed_matches",
+                }
+            ),
+        )
         return
     
     for i, item in enumerate(news_items, 1):
@@ -396,37 +455,63 @@ def main():
     
     logger.info("[4/4] Processing news items...")
     pending_posts = []
+    budget_stopped_early = False
     
     for item in news_items:
         if not cost_tracker.should_continue():
             logger.warning("Budget exhausted, stopping early")
+            budget_stopped_early = True
             break
             
         try:
-            post_data = process_news_item_for_batch(client, item, existing_urls)
+            post_data = process_news_item_for_batch(
+                client, item, existing_urls, run_stats=run_stats
+            )
             if post_data:
                 pending_posts.append(post_data)
                 time.sleep(2)
         except Exception as e:
             logger.error(f"    Error processing {item.title}: {e}")
+            _bump_run_stat(run_stats, "processing_errors")
             continue
     
     success_count = 0
+    batch_insert_ok: Optional[bool] = None
     if pending_posts:
         logger.info(f"    Inserting {len(pending_posts)} posts in batch...")
         batch_success = batch_save_posts(client, pending_posts)
+        batch_insert_ok = batch_success
         if batch_success:
             success_count = len(pending_posts)
             logger.info(f"    ✓ Batch inserted {success_count} posts")
         else:
             logger.warning("    Batch insert failed, posts were not saved")
     
+    finished_at = datetime.now().isoformat()
+    summary = {
+        "schema_version": 1,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "candidates": len(news_items),
+        "new_posts_saved": success_count,
+        "budget_stopped_early": budget_stopped_early,
+        "batch_insert_ok": batch_insert_ok,
+        "estimated_cost_usd": round(cost_tracker.get_current_cost(), 6),
+        "skipped_invalid_url": run_stats.get("skipped_invalid_url", 0),
+        "skipped_duplicate_url": run_stats.get("skipped_duplicate_url", 0),
+        "generated_ok": run_stats.get("generated_ok", 0),
+        "failed_ai": run_stats.get("failed_ai", 0),
+        "failed_validation": run_stats.get("failed_validation", 0),
+        "processing_errors": run_stats.get("processing_errors", 0),
+    }
+    logger.info("pipeline_summary %s", json.dumps(summary))
+    
     logger.info("=" * 60)
-    logger.info(f"Pipeline Complete!")
-    logger.info(f"  Processed: {len(news_items)} items")
+    logger.info("Pipeline Complete!")
+    logger.info(f"  Candidates: {len(news_items)} items")
     logger.info(f"  New posts: {success_count}")
-    logger.info(f"  Skipped: {len(news_items) - success_count} (duplicates)")
-    logger.info(f"Finished at: {datetime.now().isoformat()}")
+    logger.info(f"  Skipped (see pipeline_summary): duplicates / invalid URL / AI / validation")
+    logger.info(f"Finished at: {finished_at}")
     logger.info("=" * 60)
     
     cost_tracker.log_summary()

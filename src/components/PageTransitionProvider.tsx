@@ -9,6 +9,8 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
+  Suspense,
 } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -22,6 +24,14 @@ interface PageTransitionContextType {
 const PageTransitionContext = createContext<PageTransitionContextType>({
   triggerTransition: () => false,
 });
+
+/** While useSearchParams() suspends, still navigate immediately (no overlay). */
+const SUSPENSE_FALLBACK_CONTEXT: PageTransitionContextType = {
+  triggerTransition: (callback) => {
+    callback();
+    return true;
+  },
+};
 
 const STRIP_STAGGER_MS = 100;
 const STRIP_COUNT = 3;
@@ -58,11 +68,12 @@ function toRouterHref(url: URL) {
   return `${url.pathname}${url.search}${url.hash}`;
 }
 
-export default function PageTransitionProvider({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+/**
+ * useSearchParams() suspends in the App Router; keep it inside Suspense with a
+ * stable fallback so we never render {children} both inside and outside this
+ * provider (that mismatch caused hydration errors on /about, /topics, etc.).
+ */
+function PageTransitionInner({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -213,5 +224,23 @@ export default function PageTransitionProvider({
       )}
       {children}
     </PageTransitionContext.Provider>
+  );
+}
+
+export default function PageTransitionProvider({
+  children,
+}: {
+  children: ReactNode;
+}) {
+  return (
+    <Suspense
+      fallback={
+        <PageTransitionContext.Provider value={SUSPENSE_FALLBACK_CONTEXT}>
+          {children}
+        </PageTransitionContext.Provider>
+      }
+    >
+      <PageTransitionInner>{children}</PageTransitionInner>
+    </Suspense>
   );
 }

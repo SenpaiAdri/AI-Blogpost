@@ -8,6 +8,7 @@ export default function Navbar() {
   const pathname = usePathname();
   const isAbout = pathname === "/about";
   const isHome = pathname === "/";
+  const isTopics = pathname === "/topics";
   const isBlog = pathname.startsWith("/blog");
 
   return (
@@ -39,6 +40,19 @@ export default function Navbar() {
             >
               blog
               {(isHome || isBlog) && (
+                <span className="block h-[2px] mt-0.5 border-b-2 border-dashed border-red-500" />
+              )}
+            </TransitionLink>
+
+            <TransitionLink
+              href="/topics"
+              className={`text-sm sm:text-base font-bold uppercase tracking-wider transition-colors ${isTopics
+                ? "text-white"
+                : "text-[#6A6B70] hover:text-white"
+                }`}
+            >
+              topics
+              {isTopics && (
                 <span className="block h-[2px] mt-0.5 border-b-2 border-dashed border-red-500" />
               )}
             </TransitionLink>

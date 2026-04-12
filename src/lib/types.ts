@@ -34,7 +34,7 @@ export interface Source {
 }
 
 export interface Tag {
-  id: number
+  id: number | string
   name: string
   slug: string
 }

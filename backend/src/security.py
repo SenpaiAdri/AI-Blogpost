@@ -11,6 +11,11 @@ MAX_TITLE_LENGTH = 200
 MAX_CONTENT_LENGTH = 50000
 MAX_SLUG_LENGTH = 100
 MAX_EXCERPT_LENGTH = 500
+MIN_BLOG_CONTENT_CHARS = 400
+MIN_TLDR_ITEMS = 1
+MAX_TLDR_ITEMS = 5
+MIN_TAGS = 1
+MAX_TAGS = 5
 
 
 def _get_allowed_domains() -> set[str]:
@@ -166,11 +171,38 @@ def validate_ai_output(data: Dict[str, Any]) -> Optional[str]:
     if len(data["title"]) > MAX_TITLE_LENGTH:
         return f"Title exceeds {MAX_TITLE_LENGTH} characters"
     
-    if not isinstance(data.get("content"), str) or len(data["content"]) < 50:
-        return "Content must be at least 50 characters"
+    content_raw = data.get("content")
+    if not isinstance(content_raw, str) or len(content_raw.strip()) < MIN_BLOG_CONTENT_CHARS:
+        return f"Content must be at least {MIN_BLOG_CONTENT_CHARS} characters"
     
     if len(data["content"]) > MAX_CONTENT_LENGTH:
         data["content"] = data["content"][:MAX_CONTENT_LENGTH]
+    
+    sources = data.get("source_url")
+    if not isinstance(sources, list) or len(sources) < 1:
+        return "source_url must be a non-empty list"
+    for i, src in enumerate(sources):
+        if not isinstance(src, dict):
+            return f"source_url[{i}] must be an object with name and url"
+        u = src.get("url")
+        if not u or not isinstance(u, str) or not validate_url(u):
+            return f"Invalid or disallowed source_url[{i}].url"
+    
+    tldr = data.get("tldr")
+    if not isinstance(tldr, list) or len(tldr) < MIN_TLDR_ITEMS:
+        return f"tldr must have at least {MIN_TLDR_ITEMS} non-empty item(s)"
+    if len(tldr) > MAX_TLDR_ITEMS:
+        tldr = tldr[:MAX_TLDR_ITEMS]
+        data["tldr"] = tldr
+    for i, item in enumerate(tldr):
+        if not str(item).strip():
+            return f"tldr[{i}] must be non-empty"
+    
+    tags = data.get("tags")
+    if not isinstance(tags, list) or len(tags) < MIN_TAGS:
+        return f"tags must have at least {MIN_TAGS} item(s)"
+    if len(tags) > MAX_TAGS:
+        data["tags"] = tags[:MAX_TAGS]
     
     data["slug"] = generate_safe_slug(data.get("slug", data["title"]))
     
@@ -183,6 +215,6 @@ def validate_ai_output(data: Dict[str, Any]) -> Optional[str]:
         data["tldr"] = [sanitize_text(str(item), 200) for item in data["tldr"][:5]]
     
     if "tags" in data and isinstance(data["tags"], list):
-        data["tags"] = [sanitize_text(str(tag), 50)[:30] for tag in data["tags"][:10]]
+        data["tags"] = [sanitize_text(str(tag), 50)[:30] for tag in data["tags"][:MAX_TAGS]]
     
     return None

@@ -78,9 +78,10 @@ export default function About() {
 									<p className="text-sm text-[#808080] leading-relaxed 
 									sm:text-base
 									lg:text-lg">
-										An autonomous, AI-powered blogging website that create
-										and publishes the latest tech news every single day.
-										No human. No delays. Just cron job.
+										An autonomous, AI-powered site that reads dozens of RSS
+										sources — from AI to security, cloud, and developer tools —
+										and publishes concise tech coverage on a schedule.
+										No editorial desk. No manual publishing step.
 									</p>
 								</div>
 							</div>
@@ -115,9 +116,9 @@ export default function About() {
 									<span className="text-red-500"> autonomous</span>.
 								</p>
 								<p className="text-sm sm:text-base text-[#808080] leading-relaxed lg:max-w-md shrink-0">
-									No editorial bias. No information overload. Our AI reads through
-									the noise from 12+ sources and distills it into clear, actionable
-									posts — published automatically, every single day.
+									No editorial bias. No information overload. Models read across
+									20+ feeds, filter for IT-relevant stories, and turn them into
+									clear posts — published automatically on a fixed cadence.
 								</p>
 							</div>
 						</BrutalBlock>
@@ -128,7 +129,7 @@ export default function About() {
 						lg:gap-6">
 							<BrutalStat number="150" suffix="+" label="Posts Published" />
 							<BrutalStat number="30" suffix="+" label="Topics Covered" />
-							<BrutalStat number="12" suffix="" label="Sources Monitored" />
+							<BrutalStat number="20" suffix="" label="Sources Monitored" />
 							<BrutalStat number="6" suffix="h" label="Run Interval" />
 						</div>
 
@@ -152,12 +153,12 @@ export default function About() {
 										{
 											step: "01",
 											title: "INGEST",
-											desc: "RSS feeds from 12+ tech sources are monitored and fetched every 6 hours.",
+											desc: "RSS feeds from 20+ tech sources are fetched in parallel, deduped, and keyword-filtered.",
 										},
 										{
 											step: "02",
 											title: "PROCESS",
-											desc: "Gemini AI reads, analyzes, and writes a TL;DR-style summary post.",
+											desc: "Gemini (with an OpenRouter fallback) reads source text and writes structured posts with validation.",
 										},
 										{
 											step: "03",

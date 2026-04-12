@@ -11,6 +11,11 @@ TOKEN_PRICING = {
         "output": 10.0,
         "unit": "per_million"
     },
+    "gemini-2.5-flash": {
+        "input": 0.15,
+        "output": 0.60,
+        "unit": "per_million"
+    },
     "gemini-2.0-flash": {
         "input": 0.075,
         "output": 0.30,
@@ -29,6 +34,11 @@ TOKEN_PRICING = {
     "google/gemma-3n-e4": {
         "input": 0.10,
         "output": 0.10,
+        "unit": "per_million"
+    },
+    "google/gemma-3-27b-it": {
+        "input": 0.20,
+        "output": 0.20,
         "unit": "per_million"
     },
 }
