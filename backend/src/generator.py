@@ -16,6 +16,13 @@ logger = get_logger("generator")
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
 
+# If true, replace ![alt](url) with a text link to the article (no hotlinked images).
+_STRIP_MARKDOWN_IMAGES = os.getenv("STRIP_MARKDOWN_IMAGES", "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+
 if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
@@ -51,11 +58,17 @@ Guidelines:
 - Content should be in Markdown format with proper headings (## Heading)
 - Use proper markdown code fences: ```python for code blocks, NOT "python" on its own line
 - Use standard markdown tables with proper header row and separator row (|---|---|)
-- Use actual characters, NEVER use HTML entities like &amp; &lt; &gt; &#x27; &#39; - use ' < > &
+- Use actual characters in every JSON string (title, tldr, excerpt, tags, content). NEVER use HTML entities like &amp; &lt; &gt; &#x27; &#39; &quot; — use straight quotes and apostrophes instead
 - Do NOT repeat the title in the content
 - Do NOT include leading # in content - use ## for main sections
 - No introductory text, just the JSON object
-- Make the content informative and useful for developers"""
+- Make the content informative and useful for developers
+
+Images (copyright and hotlinking):
+- Do NOT invent, guess, or reconstruct image URLs. Only use `![description](url)` if that exact image URL appears in the Source Material.
+- If the story references a photo but no URL is in the source text, describe it in prose and link readers to the original article — do not embed an image.
+- When you do embed an image from the source, put the markdown image on its own line, then immediately add: `*Photo/source: [use the publisher name from Source](article URL from context).*` using the same article URL as in source_url, not the bare image CDN alone.
+- When unsure about rights or the URL is not verbatim in the source, omit the image and link to the original article instead."""
 
 KEYWORD_MAP = {
     # Security (checked before broad matches like "apple")
@@ -294,7 +307,68 @@ def fix_tables(content: str) -> str:
     return '\n'.join(fixed_lines)
 
 
-def sanitize_ai_content(title: str, content: str) -> str:
+_MARKDOWN_IMAGE = re.compile(r"!\[([^\]]*)\]\((https?://[^)\s]+)(?:\s+\"[^\"]*\")?\)")
+
+
+def _image_tail_already_attributed(tail: str) -> bool:
+    """True if the text right after an image markdown already credits the source."""
+    t = tail.lstrip()
+    if not t:
+        return False
+    if t[0] in "*_":
+        head = t[:160].lower()
+        if "photo" in head or "source" in head or "credit" in head or "original" in head:
+            return True
+    return False
+
+
+def process_inline_images(content: str, source_name: str, source_url: str) -> str:
+    """Strip hotlinked images or append attribution pointing at the cited article."""
+    if not content:
+        return content
+
+    if _STRIP_MARKDOWN_IMAGES:
+
+        def strip_repl(match: re.Match) -> str:
+            alt = (match.group(1) or "").strip() or "Photo"
+            label = source_name or "original article"
+            if source_url.strip():
+                return (
+                    f"*{alt}: not embedded on this site; "
+                    f"[open the original article ({label})]({source_url}) to view it.*"
+                )
+            return f"*{alt} (image omitted).*"
+
+        return _MARKDOWN_IMAGE.sub(strip_repl, content)
+
+    if not source_url.strip():
+        return content
+
+    parts: List[str] = []
+    last = 0
+    label = source_name.strip() or "Original article"
+    for m in _MARKDOWN_IMAGE.finditer(content):
+        parts.append(content[last : m.end()])
+        tail = content[m.end() : m.end() + 800]
+        if source_url in tail or _image_tail_already_attributed(tail):
+            last = m.end()
+            continue
+        parts.append(
+            f"\n\n*Image: shown as in source reporting. "
+            f"Credit and license belong to the rights holder; see "
+            f"[{label}]({source_url}) for the original context.*\n\n"
+        )
+        last = m.end()
+    parts.append(content[last:])
+    return "".join(parts)
+
+
+def sanitize_ai_content(
+    title: str,
+    content: str,
+    source_name: str = "",
+    source_url: str = "",
+) -> str:
     """Sanitize AI-generated content to fix common issues."""
     content = html.unescape(content)
     
@@ -316,7 +390,9 @@ def sanitize_ai_content(title: str, content: str) -> str:
     content = re.sub(r' +$', '', content, flags=re.MULTILINE)
     
     content = content.strip()
-    
+
+    content = process_inline_images(content, source_name, source_url)
+
     return content
 
 
@@ -341,6 +417,8 @@ Source Material:
 Source: {source_name}
 Link: {source_url}
 
+Image policy: Only embed `![alt](url)` if that exact URL appears in Source Material. Otherwise describe the image and point readers to the link above. When you embed, add a one-line credit under the image pointing to the article URL.
+
 Generate a compelling, well-structured blog post in JSON format."""
 
         response = model.generate_content(user_prompt)
@@ -358,9 +436,11 @@ Generate a compelling, well-structured blog post in JSON format."""
         if "content" in result:
             result["content"] = sanitize_ai_content(
                 result.get("title", topic),
-                result["content"]
+                result["content"],
+                source_name,
+                source_url,
             )
-        
+
         result["source_url"] = [{"name": source_name, "url": source_url}]
         result["cover_image"] = get_cover_image(result.get("title", topic), result.get("content", ""))
         result["ai_model"] = GEMINI_MODEL
@@ -392,6 +472,8 @@ Source Material:
 Source: {source_name}
 Link: {source_url}
 
+Image policy: Only embed `![alt](url)` if that exact URL appears in Source Material. Otherwise describe the image and point readers to the link above. When you embed, add a one-line credit under the image pointing to the article URL.
+
 Generate a compelling, well-structured blog post in JSON format."""
 
         response = client.chat.completions.create(
@@ -419,9 +501,11 @@ Generate a compelling, well-structured blog post in JSON format."""
         if "content" in result:
             result["content"] = sanitize_ai_content(
                 result.get("title", topic),
-                result["content"]
+                result["content"],
+                source_name,
+                source_url,
             )
-        
+
         result["source_url"] = [{"name": source_name, "url": source_url}]
         result["cover_image"] = get_cover_image(result.get("title", topic), result.get("content", ""))
         result["ai_model"] = OPENROUTER_MODEL

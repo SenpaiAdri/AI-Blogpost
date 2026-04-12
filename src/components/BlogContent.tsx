@@ -1,6 +1,7 @@
 'use client';
 
 import Markdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import Prism from 'prismjs';
 import { useEffect, useState } from 'react';
 import 'prismjs/components/prism-javascript';
@@ -46,12 +47,20 @@ export default function BlogContent({ content }: BlogContentProps) {
 
   useEffect(() => {
     setMounted(true);
-    Prism.highlightAll();
-  }, [content]);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    const id = requestAnimationFrame(() => {
+      Prism.highlightAll();
+    });
+    return () => cancelAnimationFrame(id);
+  }, [content, mounted]);
 
   return (
     <article className="max-w-none text-white leading-relaxed space-y-4 mt-10 text-wrap">
       <Markdown
+        remarkPlugins={[remarkGfm]}
         components={{
           p: ({ children }) => <p className="text-white text-wrap">{children}</p>,
           h1: ({ children }) => <h1 className="text-2xl font-bold text-white text-wrap mt-8 mb-4">{children}</h1>,
@@ -59,6 +68,7 @@ export default function BlogContent({ content }: BlogContentProps) {
           h3: ({ children }) => <h3 className="text-lg font-bold text-white text-wrap mt-6 mb-3">{children}</h3>,
           h4: ({ children }) => <h4 className="text-base font-bold text-white mt-4 mb-2">{children}</h4>,
           h5: ({ children }) => <h5 className="text-sm font-bold text-white text-wrap mt-3 mb-2">{children}</h5>,
+          h6: ({ children }) => <h6 className="text-sm font-semibold text-gray-200 text-wrap mt-3 mb-2">{children}</h6>,
           a: ({ href, children }) => {
             const safeHref = sanitizeLinkHref(href);
             if (!safeHref) {
@@ -74,6 +84,22 @@ export default function BlogContent({ content }: BlogContentProps) {
               >
                 {children}
               </a>
+            );
+          },
+          img: ({ src, alt }) => {
+            const srcStr = typeof src === "string" ? src : undefined;
+            const safe = srcStr ? sanitizeLinkHref(srcStr) : null;
+            if (!safe) {
+              return null;
+            }
+            return (
+              <img
+                src={safe}
+                alt={typeof alt === "string" ? alt : ""}
+                className="rounded-lg max-w-full h-auto my-6 border border-[#393A41]"
+                loading="lazy"
+                decoding="async"
+              />
             );
           },
           ul: ({ children }) => <ul className="list-disc list-inside space-y-2 ml-4">{children}</ul>,
@@ -97,12 +123,6 @@ export default function BlogContent({ content }: BlogContentProps) {
               );
             }
 
-            useEffect(() => {
-              if (mounted) {
-                Prism.highlightAll();
-              }
-            }, [code, language]);
-
             return (
               <div className="relative group my-4">
                 <div className="flex items-center justify-between bg-[#1a1a1a] border border-[#393A41] border-b-0 rounded-t-lg px-4 py-2">
@@ -114,8 +134,12 @@ export default function BlogContent({ content }: BlogContentProps) {
                     Copy
                   </button>
                 </div>
-                <pre className={`language-${language} !mt-0 !rounded-t-none !rounded-b-lg overflow-x-auto`}>
-                  <code className={`language-${language}`}>{code}</code>
+                <pre
+                  className={`language-${language} !mt-0 !rounded-t-none !rounded-b-lg max-w-full min-w-0 !whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-4 py-3 text-sm`}
+                >
+                  <code className={`language-${language} !whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
+                    {code}
+                  </code>
                 </pre>
               </div>
             );
@@ -129,6 +153,12 @@ export default function BlogContent({ content }: BlogContentProps) {
           ),
           thead: ({ children }) => (
             <thead className="bg-[#1a1a1a]">{children}</thead>
+          ),
+          tbody: ({ children }) => (
+            <tbody className="bg-[#131316]">{children}</tbody>
+          ),
+          tr: ({ children }) => (
+            <tr className="even:bg-[#1a1a1a]/50">{children}</tr>
           ),
           th: ({ children }) => (
             <th className="px-4 py-3 text-left text-sm font-bold text-white border-b border-[#393A41]">

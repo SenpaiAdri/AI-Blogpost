@@ -133,11 +133,11 @@ def sanitize_html(content: str, max_length: int = MAX_CONTENT_LENGTH) -> str:
 
 
 def sanitize_text(text: str, max_length: int = 5000) -> str:
-    """Sanitize plain text - escape HTML, limit length."""
+    """Normalize plain text for storage and prompts: decode HTML entities, collapse whitespace, cap length."""
     if not text:
         return ""
-    
-    text = html.escape(text)
+
+    text = html.unescape(text)
     text = re.sub(r'\s+', ' ', text).strip()
     
     if len(text) > max_length:
@@ -167,7 +167,8 @@ def validate_ai_output(data: Dict[str, Any]) -> Optional[str]:
     
     if not isinstance(data.get("title"), str):
         return "Title must be a string"
-    
+
+    data["title"] = re.sub(r"\s+", " ", html.unescape(data["title"]).strip())
     if len(data["title"]) > MAX_TITLE_LENGTH:
         return f"Title exceeds {MAX_TITLE_LENGTH} characters"
     
@@ -207,7 +208,7 @@ def validate_ai_output(data: Dict[str, Any]) -> Optional[str]:
     data["slug"] = generate_safe_slug(data.get("slug", data["title"]))
     
     if "excerpt" in data and data["excerpt"]:
-        data["excerpt"] = data["excerpt"][:MAX_EXCERPT_LENGTH]
+        data["excerpt"] = sanitize_text(str(data["excerpt"]), MAX_EXCERPT_LENGTH)
     else:
         data["excerpt"] = data["content"][:MAX_EXCERPT_LENGTH] + "..."
     
