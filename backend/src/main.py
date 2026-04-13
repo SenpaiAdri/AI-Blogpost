@@ -5,6 +5,7 @@ import sys
 import time
 from datetime import datetime
 from typing import List, Set, Optional, Dict
+from urllib.parse import urlparse
 from dotenv import load_dotenv
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
@@ -22,6 +23,14 @@ from security import sanitize_text, validate_url, validate_ai_output, MAX_TITLE_
 from metrics import cost_tracker
 
 logger = get_logger("ingest")
+
+_AGGREGATOR_SOURCES = {"hacker news", "hacker news best"}
+_PUBLISHER_NAME_MAP = {
+    "github": "GitHub",
+    "bsky": "Bluesky",
+    "nytimes": "The New York Times",
+    "wsj": "The Wall Street Journal",
+}
 
 
 def validate_environment() -> bool:
@@ -43,11 +52,47 @@ def validate_environment() -> bool:
     return True
 
 
-def format_context_for_ai(item: NewsItem, article_content: str = "") -> str:
+def _publisher_name_from_url(url: str) -> str:
+    """Derive a human-friendly publisher name from an article URL."""
+    if not url:
+        return ""
+    try:
+        host = (urlparse(url).netloc or "").lower()
+    except Exception:
+        return ""
+    host = re.sub(r"^(www\.|m\.)", "", host)
+    if not host:
+        return ""
+
+    parts = [p for p in host.split(".") if p]
+    if len(parts) >= 3 and parts[-2] in {"co", "com", "org", "net"}:
+        base = parts[-3]
+    elif len(parts) >= 2:
+        base = parts[-2]
+    else:
+        base = parts[0]
+
+    if base in _PUBLISHER_NAME_MAP:
+        return _PUBLISHER_NAME_MAP[base]
+
+    return re.sub(r"[-_]+", " ", base).strip().title()
+
+
+def resolve_display_source_name(feed_source: str, article_url: str) -> str:
+    """Prefer original publisher for aggregator feeds (e.g. Hacker News)."""
+    source = (feed_source or "").strip()
+    if source.lower() in _AGGREGATOR_SOURCES:
+        publisher = _publisher_name_from_url(article_url)
+        if publisher:
+            return publisher
+    return source
+
+
+def format_context_for_ai(item: NewsItem, article_content: str = "", source_name: Optional[str] = None) -> str:
     """Format news item and article content for AI context."""
     sanitized_title = sanitize_text(item.title, MAX_TITLE_LENGTH)
     sanitized_link = item.link if validate_url(item.link) else ""
-    sanitized_source = sanitize_text(item.source, 50)
+    sanitized_source = sanitize_text(source_name or item.source, 50)
     
     context = f"""Source: {sanitized_source}
 Title: {sanitized_title}
@@ -122,6 +167,15 @@ def _bump_run_stat(run_stats: Optional[Dict[str, int]], key: str) -> None:
         run_stats[key] = run_stats.get(key, 0) + 1
 
 
+def _source_distribution(items: List[NewsItem]) -> Dict[str, int]:
+    """Count selected candidates by source for run-level observability."""
+    counts: Dict[str, int] = {}
+    for item in items:
+        source = (item.source or "unknown").strip() or "unknown"
+        counts[source] = counts.get(source, 0) + 1
+    return dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0].lower())))
+
+
 def process_news_item(
     client,
     item: NewsItem,
@@ -144,16 +198,17 @@ def process_news_item(
     
     for attempt in range(max_retries):
         try:
+            display_source_name = resolve_display_source_name(item.source, item.link)
             logger.debug(f"    Scraping article content...")
             article_content = scrape_article(item.link)
             
-            context = format_context_for_ai(item, article_content)
+            context = format_context_for_ai(item, article_content, source_name=display_source_name)
             
             logger.debug(f"    Generating blog post...")
             post_data = generate_blog_post(
                 topic=item.title,
                 article_content=context,
-                source_name=item.source,
+                source_name=display_source_name,
                 source_url=item.link
             )
             
@@ -167,7 +222,7 @@ def process_news_item(
                 log_ai_generation_result(
                     client=client,
                     topic=item.title,
-                    source_name=item.source,
+                    source_name=display_source_name,
                     source_url=item.link,
                     status="failed",
                     failure_reason="ai_generation_failed",
@@ -186,7 +241,7 @@ def process_news_item(
                 log_ai_generation_result(
                     client=client,
                     topic=item.title,
-                    source_name=item.source,
+                    source_name=display_source_name,
                     source_url=item.link,
                     status="failed",
                     output_json=post_data,
@@ -198,7 +253,7 @@ def process_news_item(
             log_ai_generation_result(
                 client=client,
                 topic=item.title,
-                source_name=item.source,
+                source_name=display_source_name,
                 source_url=item.link,
                 status="generated",
                 output_json=post_data,
@@ -253,16 +308,17 @@ def process_news_item_for_batch(
     
     for attempt in range(max_retries):
         try:
+            display_source_name = resolve_display_source_name(item.source, item.link)
             logger.debug(f"    Scraping article content...")
             article_content = scrape_article(item.link)
             
-            context = format_context_for_ai(item, article_content)
+            context = format_context_for_ai(item, article_content, source_name=display_source_name)
             
             logger.debug(f"    Generating blog post...")
             post_data = generate_blog_post(
                 topic=item.title,
                 article_content=context,
-                source_name=item.source,
+                source_name=display_source_name,
                 source_url=item.link
             )
             
@@ -276,7 +332,7 @@ def process_news_item_for_batch(
                 log_ai_generation_result(
                     client=client,
                     topic=item.title,
-                    source_name=item.source,
+                    source_name=display_source_name,
                     source_url=item.link,
                     status="failed",
                     failure_reason="ai_generation_failed",
@@ -295,7 +351,7 @@ def process_news_item_for_batch(
                 log_ai_generation_result(
                     client=client,
                     topic=item.title,
-                    source_name=item.source,
+                    source_name=display_source_name,
                     source_url=item.link,
                     status="failed",
                     output_json=post_data,
@@ -307,7 +363,7 @@ def process_news_item_for_batch(
             log_ai_generation_result(
                 client=client,
                 topic=item.title,
-                source_name=item.source,
+                source_name=display_source_name,
                 source_url=item.link,
                 status="generated",
                 output_json=post_data,
@@ -493,6 +549,7 @@ def main():
         "started_at": started_at,
         "finished_at": finished_at,
         "candidates": len(news_items),
+        "selected_by_source": _source_distribution(news_items),
         "new_posts_saved": success_count,
         "budget_stopped_early": budget_stopped_early,
         "batch_insert_ok": batch_insert_ok,

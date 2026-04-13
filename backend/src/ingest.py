@@ -4,8 +4,9 @@ import re
 import threading
 from dataclasses import dataclass
 from datetime import datetime
+from email.utils import parsedate_to_datetime
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from typing import List
+from typing import List, Optional
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from logger import get_logger
@@ -179,11 +180,7 @@ def fetch_feed(feed_config: dict) -> List[NewsItem]:
             snippet = entry.get("summary", entry.get("description", ""))
             pub_date_str = entry.get("published", "")
             
-            try:
-                pub_date = datetime.fromisoformat(pub_date_str.replace("Z", "+00:00"))
-                pub_date = pub_date.replace(tzinfo=None)
-            except:
-                pub_date = datetime.now()
+            pub_date = parse_entry_datetime(entry, pub_date_str)
             
             items.append(NewsItem(
                 title=title,
@@ -248,7 +245,58 @@ def get_latest_news(limit: int = 10) -> List[NewsItem]:
     """Get the latest tech news items (keyword-filtered)."""
     all_news = fetch_all_news()
     tech_news = filter_tech_news(all_news)
-    return tech_news[:limit]
+    diversified = diversify_news_items(tech_news, limit=limit, max_per_source=2)
+    return diversified
+
+
+def parse_entry_datetime(entry: dict, pub_date_str: str) -> datetime:
+    """Parse feed entry timestamps across common RSS/Atom formats."""
+    parsed_struct = entry.get("published_parsed") or entry.get("updated_parsed")
+    if parsed_struct:
+        try:
+            return datetime(*parsed_struct[:6])
+        except Exception:
+            pass
+
+    raw = (pub_date_str or entry.get("updated", "") or "").strip()
+    if raw:
+        try:
+            return datetime.fromisoformat(raw.replace("Z", "+00:00")).replace(tzinfo=None)
+        except Exception:
+            pass
+        try:
+            dt = parsedate_to_datetime(raw)
+            return dt.replace(tzinfo=None) if dt.tzinfo else dt
+        except Exception:
+            pass
+
+    return datetime.now()
+
+
+def diversify_news_items(items: List[NewsItem], limit: int, max_per_source: int = 2) -> List[NewsItem]:
+    """Pick newest items while capping stories per feed source."""
+    if limit <= 0 or not items:
+        return []
+
+    selected: List[NewsItem] = []
+    source_counts: dict[str, int] = {}
+    remainder: List[NewsItem] = []
+
+    for item in items:
+        src = item.source or "unknown"
+        if source_counts.get(src, 0) < max_per_source:
+            selected.append(item)
+            source_counts[src] = source_counts.get(src, 0) + 1
+            if len(selected) >= limit:
+                return selected
+        else:
+            remainder.append(item)
+
+    for item in remainder:
+        selected.append(item)
+        if len(selected) >= limit:
+            break
+    return selected[:limit]
 
 
 if __name__ == "__main__":
