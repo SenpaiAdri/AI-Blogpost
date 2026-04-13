@@ -1,5 +1,5 @@
 import os
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable, Any
 from datetime import datetime, timedelta
 from logger import get_logger
 
@@ -44,6 +44,14 @@ TOKEN_PRICING = {
 }
 
 DAILY_BUDGET_LIMIT = 2.0
+_SUMMARY_PROVIDERS: Dict[str, Callable[[], Dict[str, Any]]] = {}
+
+
+def register_summary_provider(name: str, provider: Callable[[], Dict[str, Any]]) -> None:
+    """Register a callback to append extra sections into run summaries."""
+    if not name or provider is None:
+        return
+    _SUMMARY_PROVIDERS[name] = provider
 
 
 class CostTracker:
@@ -114,7 +122,7 @@ class CostTracker:
     def get_summary(self) -> Dict:
         """Get run summary for logging."""
         duration = (datetime.now() - self.run_stats["start_time"]).total_seconds()
-        return {
+        summary = {
             "duration_seconds": round(duration, 1),
             "total_requests": self.run_stats["total_requests"],
             "successful": self.run_stats["successful_requests"],
@@ -124,6 +132,17 @@ class CostTracker:
             "total_cost_usd": round(self.run_stats["total_cost"], 4),
             "models": self.run_stats["models_used"]
         }
+        extra_sections: Dict[str, Dict[str, Any]] = {}
+        for name, provider in _SUMMARY_PROVIDERS.items():
+            try:
+                data = provider()
+                if data:
+                    extra_sections[name] = data
+            except Exception as e:
+                logger.warning(f"Summary provider '{name}' failed: {e}")
+        if extra_sections:
+            summary["extra"] = extra_sections
+        return summary
     
     def log_summary(self) -> None:
         """Log the cost summary."""
@@ -132,6 +151,8 @@ class CostTracker:
         
         for model, stats in summary["models"].items():
             logger.info(f"  {model}: {stats.get('requests', 0)} req, ${round(stats.get('cost', 0), 4)}")
+        for section_name, section in summary.get("extra", {}).items():
+            logger.info(f"  {section_name}: {section}")
 
 
 cost_tracker = CostTracker()

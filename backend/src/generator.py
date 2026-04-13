@@ -2,6 +2,7 @@ import os
 import json
 import re
 import html
+import threading
 import google.generativeai as genai
 from openai import OpenAI
 from typing import Optional, Dict, Any, List
@@ -9,9 +10,13 @@ from datetime import datetime
 import hashlib
 
 from logger import get_logger
-from metrics import cost_tracker, estimate_tokens
+from metrics import cost_tracker, estimate_tokens, register_summary_provider
 
 logger = get_logger("generator")
+
+_NORMALIZATION_FALLBACK_COUNTS: Dict[str, int] = {}
+_NORMALIZATION_FALLBACK_BY_MODEL: Dict[str, Dict[str, int]] = {}
+_NORMALIZATION_METRICS_LOCK = threading.Lock()
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
@@ -27,7 +32,6 @@ if GOOGLE_API_KEY:
     genai.configure(api_key=GOOGLE_API_KEY)
 
 GEMINI_MODEL = "gemini-2.5-flash"
-FALLBACK_MODEL = "google/gemma-3-27b-it"
 OPENROUTER_MODEL = "google/gemma-3-27b-it"
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -44,9 +48,14 @@ The output must be a valid JSON object with the following schema:
   "tldr": ["Bullet point 1", "Bullet point 2", "Bullet point 3"],
   "content": "Full markdown content...",
   "excerpt": "Short teaser sentence (max 200 chars)",
-  "tags": ["Tag1", "Tag2", "Tag3"],
-  "source_url": [{"name": "Source Name", "url": "https://source.url"}]
+  "tags": ["Tag1", "Tag2", "Tag3"]
 }
+Output contract:
+- Return ONLY JSON. No prose before or after the JSON object.
+- Use EXACTLY these keys: title, slug, tldr, content, excerpt, tags.
+- Do not add source_url, cover_image, ai_model, or any extra keys; those are injected server-side.
+- If evidence in source material is limited, avoid guessing. State uncertainty directly in content.
+- Every concrete claim should be inferable from the provided source material.
 
 Quality and accuracy:
 - Ground claims in the provided source material; do not invent quotes, statistics, or product details.
@@ -64,6 +73,8 @@ Guidelines:
 - Do NOT include leading # in content - use ## for main sections
 - No introductory text, just the JSON object
 - Make the content informative and useful for developers
+- Use exactly 3 TLDR bullets, each concise (max ~140 chars)
+- Target content length: ~700-1200 words, unless source material is too thin
 
 Images (copyright and hotlinking):
 - Do NOT invent, guess, or reconstruct image URLs. Only use `![description](url)` if that exact image URL appears in the Source Material.
@@ -372,37 +383,80 @@ def balance_markdown_fences(content: str) -> str:
 
 
 def fix_tables(content: str) -> str:
-    """Fix common issues with markdown tables."""
-    lines = content.split('\n')
+    """Fix markdown table separators for likely table blocks only."""
+    lines = content.split("\n")
     fixed_lines = []
-    
+
+    def _pipe_count(text: str) -> int:
+        return text.count("|")
+
+    def _is_probable_table_header(text: str) -> bool:
+        s = text.strip()
+        if not s or s.startswith("```"):
+            return False
+        # Avoid rewriting obvious prose/sentences that include pipes.
+        if s.startswith("- ") or s.startswith("* ") or s.startswith(">"):
+            return False
+        return _pipe_count(text) >= 2
+
+    def _is_table_separator(text: str) -> bool:
+        return bool(re.match(r"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$", text))
+
+    def _normalize_table_row(text: str, expected_cols: int) -> str:
+        s = text.strip()
+        if not s.startswith("|"):
+            s = "| " + s
+        if not s.endswith("|"):
+            s = s + " |"
+        col_count = _pipe_count(s) - 1
+        if col_count < expected_cols:
+            s = s[:-1] + (" |" * (expected_cols - col_count)) + "|"
+        return s
+
     i = 0
+    in_fence = False
     while i < len(lines):
         line = lines[i]
-        
-        if '|' in line and not line.strip().startswith('|'):
-            table_start = i
-            header_line = line
-            
-            if i + 1 < len(lines) and '|' in lines[i + 1]:
-                sep_line = lines[i + 1]
-                
-                if not re.match(r'^\|[\s\-:|]*\|', sep_line):
-                    cols = header_line.count('|')
-                    sep_line = '|' + '---|' * cols
-            
-            fixed_lines.append(header_line)
-            fixed_lines.append(sep_line)
-            i += 2
-            
-            while i < len(lines) and '|' in lines[i]:
-                fixed_lines.append(lines[i])
-                i += 1
+        if _FENCE_LINE.match(line):
+            in_fence = not in_fence
+            fixed_lines.append(line)
+            i += 1
+            continue
+
+        # Only treat as a table when we can confirm a minimum shape:
+        # header row + at least one more pipe row.
+        if (not in_fence) and _is_probable_table_header(line) and i + 1 < len(lines):
+            next_line = lines[i + 1]
+            if _pipe_count(next_line) >= 2:
+                header_line = _normalize_table_row(line, _pipe_count(line) - 1)
+
+                if _is_table_separator(next_line):
+                    sep_line = _normalize_table_row(next_line, _pipe_count(header_line) - 1)
+                    row_start = i + 2
+                else:
+                    cols = max(_pipe_count(header_line) - 1, 1)
+                    sep_line = "| " + " | ".join(["---"] * cols) + " |"
+                    row_start = i + 1
+
+                # Require at least one body row to avoid false positives on prose.
+                if row_start < len(lines) and _pipe_count(lines[row_start]) >= 2:
+                    fixed_lines.append(header_line)
+                    fixed_lines.append(sep_line)
+                    i = row_start
+                    while i < len(lines) and _pipe_count(lines[i]) >= 2:
+                        fixed_lines.append(
+                            _normalize_table_row(lines[i], _pipe_count(header_line) - 1)
+                        )
+                        i += 1
+                    continue
+
+            fixed_lines.append(line)
+            i += 1
         else:
             fixed_lines.append(line)
             i += 1
-    
-    return '\n'.join(fixed_lines)
+
+    return "\n".join(fixed_lines)
 
 
 _MARKDOWN_IMAGE = re.compile(r"!\[([^\]]*)\]\((https?://[^)\s]+)(?:\s+\"[^\"]*\")?\)")
@@ -496,6 +550,189 @@ def sanitize_ai_content(
     return content
 
 
+def build_user_prompt(
+    topic: str,
+    article_content: str,
+    source_name: str,
+    source_url: str,
+    source_char_limit: int,
+) -> str:
+    """Build a consistent user prompt across model providers."""
+    return f"""Write a blog post about this technology news story:
+
+Topic: {topic}
+
+Source Material:
+{article_content[:source_char_limit]}
+
+Source: {source_name}
+Link: {source_url}
+
+Image policy: Only embed `![alt](url)` if that exact URL appears in Source Material. Otherwise describe the image and point readers to the link above. When you embed, add a one-line credit under the image pointing to the article URL.
+
+Close every ``` code fence before body text after the code.
+Return JSON with exactly these keys only: title, slug, tldr, content, excerpt, tags.
+Do not include source_url, cover_image, ai_model, or any extra keys.
+If the source does not support a claim, state uncertainty instead of guessing.
+Generate a compelling, well-structured post in JSON format."""
+
+
+def _coerce_list_of_strings(value: Any) -> List[str]:
+    """Normalize values to a non-empty list of strings."""
+    if isinstance(value, list):
+        out = [str(v).strip() for v in value if str(v).strip()]
+        return out
+    if isinstance(value, str) and value.strip():
+        return [value.strip()]
+    return []
+
+
+def _record_normalization_fallbacks(
+    model_name: str, fallback_fields: List[str], extra_keys: List[str]
+) -> None:
+    """Track how often we rely on fallback normalization fields."""
+    if not fallback_fields and not extra_keys:
+        return
+
+    with _NORMALIZATION_METRICS_LOCK:
+        for field in fallback_fields:
+            _NORMALIZATION_FALLBACK_COUNTS[field] = (
+                _NORMALIZATION_FALLBACK_COUNTS.get(field, 0) + 1
+            )
+            if model_name:
+                if model_name not in _NORMALIZATION_FALLBACK_BY_MODEL:
+                    _NORMALIZATION_FALLBACK_BY_MODEL[model_name] = {}
+                model_bucket = _NORMALIZATION_FALLBACK_BY_MODEL[model_name]
+                model_bucket[field] = model_bucket.get(field, 0) + 1
+        if extra_keys:
+            _NORMALIZATION_FALLBACK_COUNTS["extra_keys_dropped"] = (
+                _NORMALIZATION_FALLBACK_COUNTS.get("extra_keys_dropped", 0)
+                + len(extra_keys)
+            )
+            if model_name:
+                if model_name not in _NORMALIZATION_FALLBACK_BY_MODEL:
+                    _NORMALIZATION_FALLBACK_BY_MODEL[model_name] = {}
+                model_bucket = _NORMALIZATION_FALLBACK_BY_MODEL[model_name]
+                model_bucket["extra_keys_dropped"] = (
+                    model_bucket.get("extra_keys_dropped", 0) + len(extra_keys)
+                )
+
+    logger.info(
+        "    Normalization fallback used (%s): %s%s",
+        model_name,
+        ", ".join(fallback_fields) if fallback_fields else "none",
+        f" | dropped extra keys: {', '.join(extra_keys)}" if extra_keys else "",
+    )
+
+
+def get_normalization_fallback_counts() -> Dict[str, int]:
+    """Return a snapshot of normalization fallback counters for summaries."""
+    with _NORMALIZATION_METRICS_LOCK:
+        return dict(_NORMALIZATION_FALLBACK_COUNTS)
+
+
+def get_normalization_fallbacks_by_model() -> Dict[str, Dict[str, int]]:
+    """Return model-attributed fallback counters for summaries."""
+    with _NORMALIZATION_METRICS_LOCK:
+        return {
+            model: dict(counts)
+            for model, counts in _NORMALIZATION_FALLBACK_BY_MODEL.items()
+            if counts
+        }
+
+
+def validate_and_normalize_result(
+    result: Dict[str, Any],
+    topic: str,
+    source_name: str,
+    source_url: str,
+    fallback_fields: Optional[List[str]] = None,
+    extra_keys: Optional[List[str]] = None,
+) -> Optional[Dict[str, Any]]:
+    """Validate and normalize AI output to the expected schema."""
+    if not isinstance(result, dict):
+        return None
+
+    fallback_log = fallback_fields if fallback_fields is not None else []
+    extra_log = extra_keys if extra_keys is not None else []
+    allowed_keys = {"title", "slug", "tldr", "content", "excerpt", "tags"}
+    dropped_keys = sorted(str(k) for k in result.keys() if str(k) not in allowed_keys)
+    extra_log.extend(dropped_keys)
+
+    title = str(result.get("title", "")).strip() or topic.strip()
+    if not str(result.get("title", "")).strip():
+        fallback_log.append("title_defaulted")
+    content = str(result.get("content", "")).strip()
+    excerpt = str(result.get("excerpt", "")).strip()
+
+    if not content:
+        return None
+
+    slug = str(result.get("slug", "")).strip().lower()
+    slug = re.sub(r"[^a-z0-9-]", "-", slug)
+    slug = re.sub(r"-+", "-", slug).strip("-")
+    if not slug:
+        fallback_log.append("slug_regenerated")
+        base = re.sub(r"[^a-z0-9-]", "-", title.lower())
+        slug = re.sub(r"-+", "-", base).strip("-")[:80] or "post"
+
+    tldr = _coerce_list_of_strings(result.get("tldr", []))
+    if not tldr:
+        fallback_log.append("tldr_defaulted")
+        tldr = [f"Update: {title}", f"Source: {source_name or 'Tech news'}"]
+    tldr = tldr[:5]
+
+    tags = _coerce_list_of_strings(result.get("tags", []))
+    if not tags:
+        fallback_log.append("tags_defaulted")
+        tags = ["Tech News"]
+    tags = tags[:8]
+    if not excerpt:
+        fallback_log.append("excerpt_defaulted")
+
+    normalized: Dict[str, Any] = {
+        "title": title,
+        "slug": slug,
+        "tldr": tldr,
+        "content": sanitize_ai_content(title, content, source_name, source_url),
+        "excerpt": excerpt[:200] if excerpt else f"Latest update on {title}.",
+        "tags": tags,
+        "source_url": [{"name": source_name, "url": source_url}],
+    }
+    return normalized
+
+
+def finalize_result(
+    result: Dict[str, Any],
+    model_name: str,
+    topic: str,
+    source_name: str,
+    source_url: str,
+) -> Optional[Dict[str, Any]]:
+    """Validate, sanitize, and append common metadata."""
+    fallback_fields: List[str] = []
+    extra_keys: List[str] = []
+    normalized = validate_and_normalize_result(
+        result,
+        topic,
+        source_name,
+        source_url,
+        fallback_fields=fallback_fields,
+        extra_keys=extra_keys,
+    )
+    if not normalized:
+        logger.warning("    Generated payload failed schema validation")
+        return None
+
+    _record_normalization_fallbacks(model_name, fallback_fields, extra_keys)
+
+    normalized["cover_image"] = get_cover_image(
+        normalized.get("title", topic), normalized.get("content", "")
+    )
+    normalized["ai_model"] = model_name
+    return normalized
+
+
 def generate_with_gemini(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
     """Generate blog post using Google Gemini."""
     if not GOOGLE_API_KEY:
@@ -507,19 +744,9 @@ def generate_with_gemini(topic: str, article_content: str, source_name: str, sou
             system_instruction=SYSTEM_PROMPT
         )
         
-        user_prompt = f"""Write a blog post about this technology news story:
-
-Topic: {topic}
-
-Source Material:
-{article_content[:4000]}
-
-Source: {source_name}
-Link: {source_url}
-
-Image policy: Only embed `![alt](url)` if that exact URL appears in Source Material. Otherwise describe the image and point readers to the link above. When you embed, add a one-line credit under the image pointing to the article URL.
-
-Close every ``` code fence before body text after the code. Generate a compelling, well-structured blog post in JSON format."""
+        user_prompt = build_user_prompt(
+            topic, article_content, source_name, source_url, source_char_limit=4000
+        )
 
         response = model.generate_content(user_prompt)
         text = response.text
@@ -532,19 +759,8 @@ Close every ``` code fence before body text after the code. Generate a compellin
         if not result:
             logger.warning(f"    Failed to parse JSON response")
             return None
-        
-        if "content" in result:
-            result["content"] = sanitize_ai_content(
-                result.get("title", topic),
-                result["content"],
-                source_name,
-                source_url,
-            )
 
-        result["source_url"] = [{"name": source_name, "url": source_url}]
-        result["cover_image"] = get_cover_image(result.get("title", topic), result.get("content", ""))
-        result["ai_model"] = GEMINI_MODEL
-        return result
+        return finalize_result(result, GEMINI_MODEL, topic, source_name, source_url)
         
     except Exception as e:
         logger.warning(f"    Gemini error: {e}")
@@ -562,19 +778,9 @@ def generate_with_openrouter(topic: str, article_content: str, source_name: str,
             base_url=OPENROUTER_BASE_URL
         )
         
-        user_prompt = f"""Write a blog post about this technology news story:
-
-Topic: {topic}
-
-Source Material:
-{article_content[:8000]}
-
-Source: {source_name}
-Link: {source_url}
-
-Image policy: Only embed `![alt](url)` if that exact URL appears in Source Material. Otherwise describe the image and point readers to the link above. When you embed, add a one-line credit under the image pointing to the article URL.
-
-Close every ``` code fence before body text after the code. Generate a compelling, well-structured blog post in JSON format."""
+        user_prompt = build_user_prompt(
+            topic, article_content, source_name, source_url, source_char_limit=8000
+        )
 
         response = client.chat.completions.create(
             model=OPENROUTER_MODEL,
@@ -597,19 +803,8 @@ Close every ``` code fence before body text after the code. Generate a compellin
         if not result:
             logger.warning(f"    Failed to parse JSON response")
             return None
-        
-        if "content" in result:
-            result["content"] = sanitize_ai_content(
-                result.get("title", topic),
-                result["content"],
-                source_name,
-                source_url,
-            )
 
-        result["source_url"] = [{"name": source_name, "url": source_url}]
-        result["cover_image"] = get_cover_image(result.get("title", topic), result.get("content", ""))
-        result["ai_model"] = OPENROUTER_MODEL
-        return result
+        return finalize_result(result, OPENROUTER_MODEL, topic, source_name, source_url)
         
     except json.JSONDecodeError as e:
         logger.warning(f"    JSON parse error: {e}")
@@ -688,6 +883,12 @@ Stay tuned for more detailed coverage as more information becomes available.
         "source_url": [{"name": source_name, "url": source_url}],
         "cover_image": get_cover_image(topic)
     }
+
+
+register_summary_provider("normalization_fallbacks", get_normalization_fallback_counts)
+register_summary_provider(
+    "normalization_fallbacks_by_model", get_normalization_fallbacks_by_model
+)
 
 
 if __name__ == "__main__":
