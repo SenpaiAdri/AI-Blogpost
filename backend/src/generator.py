@@ -57,6 +57,7 @@ Quality and accuracy:
 Guidelines:
 - Content should be in Markdown format with proper headings (## Heading)
 - Use proper markdown code fences: ```python for code blocks, NOT "python" on its own line
+- Every fenced code block MUST end with a line containing only ``` (three backticks) before any following prose, headings, lists, tables, or images — never run prose or markdown inside an unclosed fence
 - Use standard markdown tables with proper header row and separator row (|---|---|)
 - Use actual characters in every JSON string (title, tldr, excerpt, tags, content). NEVER use HTML entities like &amp; &lt; &gt; &#x27; &#39; &quot; — use straight quotes and apostrophes instead
 - Do NOT repeat the title in the content
@@ -273,6 +274,103 @@ def fix_code_blocks(content: str) -> str:
     return content
 
 
+_FENCE_LINE = re.compile(r"^\s*`{3}")
+# Markdown bold word (not Python `x ** 2` with a digit right after **)
+_MD_BOLD_WORD = re.compile(r"\*\*[A-Za-z_][^*\n]*\*\*")
+
+
+def _line_signals_markdown_outside_fence(line: str) -> bool:
+    """True when this line is almost certainly prose/markdown, not code."""
+    s = line.strip()
+    if s.startswith("!["):
+        return True
+    if _MD_BOLD_WORD.search(line):
+        return True
+    return False
+
+
+def repair_leaked_markdown_fences(content: str) -> str:
+    """Close a ``` fence before prose that was left inside a code block.
+
+    Models often open ```python, paste real code, then continue the article without
+    closing the fence and put a single ``` at the very end. That parses as one giant
+    code block (headings and images stay literal). We insert an early closing fence
+    before obvious markdown (images, **bold**), then drop a stray trailing ``` that
+    used to close the oversized block.
+    """
+    if not content or "```" not in content:
+        return content
+
+    lines = content.split("\n")
+    out: List[str] = []
+    in_fence = False
+    inserted_mid_close = False
+    i = 0
+
+    while i < len(lines):
+        line = lines[i]
+        stripped = line.strip()
+
+        if _FENCE_LINE.match(line):
+            rest = stripped[3:].strip() if len(stripped) >= 3 else ""
+            if in_fence:
+                in_fence = False
+                out.append(line)
+                i += 1
+                continue
+            in_fence = True
+            out.append(line)
+            i += 1
+            continue
+
+        if in_fence and _line_signals_markdown_outside_fence(line):
+            out.append("```")
+            out.append("")
+            in_fence = False
+            inserted_mid_close = True
+            continue
+
+        out.append(line)
+        i += 1
+
+    result = "\n".join(out)
+    if inserted_mid_close:
+        result = result.rstrip("\n")
+        tail_lines = result.split("\n")
+        while tail_lines and tail_lines[-1].strip() == "":
+            tail_lines.pop()
+        if tail_lines and tail_lines[-1].strip() == "```":
+            tail_lines.pop()
+            result = "\n".join(tail_lines)
+            if result and not result.endswith("\n"):
+                result += "\n"
+    return result
+
+
+def normalize_markdown_fences(content: str) -> str:
+    """Repair prose leaked inside fences, then balance odd ``` counts."""
+    content = repair_leaked_markdown_fences(content)
+    content = balance_markdown_fences(content)
+    return content
+
+
+def balance_markdown_fences(content: str) -> str:
+    """If markdown has an odd number of ``` fence lines, append a closing fence.
+
+    Models sometimes omit the closing fence, which makes the rest of the article
+    parse as one code block (images and headings never render as HTML).
+    """
+    if not content:
+        return content
+    lines = content.splitlines()
+    fence_lines = sum(1 for line in lines if _FENCE_LINE.match(line))
+    if fence_lines % 2 == 1:
+        if not content.endswith("\n"):
+            content += "\n"
+        content += "```\n"
+    return content
+
+
 def fix_tables(content: str) -> str:
     """Fix common issues with markdown tables."""
     lines = content.split('\n')
@@ -382,7 +480,9 @@ def sanitize_ai_content(
         content = re.sub(r'^#+\s*' + re.escape(first_3) + r'\s*$', '', content, flags=re.MULTILINE)
     
     content = fix_code_blocks(content)
-    
+
+    content = normalize_markdown_fences(content)
+
     content = fix_tables(content)
     
     content = re.sub(r'\n{3,}', '\n\n', content)
@@ -419,7 +519,7 @@ Link: {source_url}
 
 Image policy: Only embed `![alt](url)` if that exact URL appears in Source Material. Otherwise describe the image and point readers to the link above. When you embed, add a one-line credit under the image pointing to the article URL.
 
-Generate a compelling, well-structured blog post in JSON format."""
+Close every ``` code fence before body text after the code. Generate a compelling, well-structured blog post in JSON format."""
 
         response = model.generate_content(user_prompt)
         text = response.text
@@ -474,7 +574,7 @@ Link: {source_url}
 
 Image policy: Only embed `![alt](url)` if that exact URL appears in Source Material. Otherwise describe the image and point readers to the link above. When you embed, add a one-line credit under the image pointing to the article URL.
 
-Generate a compelling, well-structured blog post in JSON format."""
+Close every ``` code fence before body text after the code. Generate a compelling, well-structured blog post in JSON format."""
 
         response = client.chat.completions.create(
             model=OPENROUTER_MODEL,

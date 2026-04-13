@@ -3,7 +3,7 @@
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Prism from 'prismjs';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-python';
@@ -42,26 +42,51 @@ function sanitizeLinkHref(href?: string): string | null {
   }
 }
 
+function FencedCodeBlock({ language, code }: { language: string; code: string }) {
+  const codeRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const el = codeRef.current;
+    if (!el) return;
+    el.textContent = code;
+    Prism.highlightElement(el);
+  }, [code, language]);
+
+  return (
+    <div className="relative group my-4">
+      <div className="flex items-center justify-between bg-[#1a1a1a] border border-[#393A41] border-b-0 rounded-t-lg px-4 py-2">
+        <span className="text-xs text-gray-400 font-mono">{language}</span>
+        <button
+          type="button"
+          onClick={() => navigator.clipboard.writeText(code)}
+          className="text-xs text-gray-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+        >
+          Copy
+        </button>
+      </div>
+      <pre
+        className={`language-${language} !mt-0 !rounded-t-none !rounded-b-lg max-w-full min-w-0 !whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-4 py-3 text-sm`}
+        suppressHydrationWarning
+      >
+        <code
+          ref={codeRef}
+          className={`language-${language} !whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}
+          suppressHydrationWarning
+        >
+          {code}
+        </code>
+      </pre>
+    </div>
+  );
+}
+
 export default function BlogContent({ content }: BlogContentProps) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (!mounted) return;
-    const id = requestAnimationFrame(() => {
-      Prism.highlightAll();
-    });
-    return () => cancelAnimationFrame(id);
-  }, [content, mounted]);
-
   return (
     <article className="max-w-none text-white leading-relaxed space-y-4 mt-10 text-wrap">
       <Markdown
         remarkPlugins={[remarkGfm]}
         components={{
+          pre: ({ children }): ReactNode => children,
           p: ({ children }) => <p className="text-white text-wrap">{children}</p>,
           h1: ({ children }) => <h1 className="text-2xl font-bold text-white text-wrap mt-8 mb-4">{children}</h1>,
           h2: ({ children }) => <h2 className="text-xl font-bold text-white text-wrap mt-8 mb-4">{children}</h2>,
@@ -123,26 +148,7 @@ export default function BlogContent({ content }: BlogContentProps) {
               );
             }
 
-            return (
-              <div className="relative group my-4">
-                <div className="flex items-center justify-between bg-[#1a1a1a] border border-[#393A41] border-b-0 rounded-t-lg px-4 py-2">
-                  <span className="text-xs text-gray-400 font-mono">{language}</span>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(code)}
-                    className="text-xs text-gray-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
-                  >
-                    Copy
-                  </button>
-                </div>
-                <pre
-                  className={`language-${language} !mt-0 !rounded-t-none !rounded-b-lg max-w-full min-w-0 !whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-4 py-3 text-sm`}
-                >
-                  <code className={`language-${language} !whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}>
-                    {code}
-                  </code>
-                </pre>
-              </div>
-            );
+            return <FencedCodeBlock language={language} code={code} />;
           },
           table: ({ children }) => (
             <div className="overflow-x-auto my-6">
