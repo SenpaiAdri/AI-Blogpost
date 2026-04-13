@@ -3,7 +3,7 @@
 import Markdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Prism from 'prismjs';
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import 'prismjs/components/prism-javascript';
 import 'prismjs/components/prism-typescript';
 import 'prismjs/components/prism-python';
@@ -42,8 +42,34 @@ function sanitizeLinkHref(href?: string): string | null {
   }
 }
 
+function sanitizeImageSrc(src?: string): string | null {
+  if (!src) return null;
+
+  try {
+    const parsed = new URL(src);
+    const protocol = parsed.protocol.toLowerCase();
+    if (protocol === "http:" || protocol === "https:") {
+      return src;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function getLanguageFromClassName(className?: string): string | null {
+  if (!className) return null;
+  const token = className
+    .split(/\s+/)
+    .find((part) => part.startsWith('language-'));
+  if (!token) return null;
+  const language = token.slice('language-'.length).trim().toLowerCase();
+  return language || null;
+}
+
 function FencedCodeBlock({ language, code }: { language: string; code: string }) {
   const codeRef = useRef<HTMLElement>(null);
+  const [copyState, setCopyState] = useState<'idle' | 'copied' | 'failed'>('idle');
 
   useEffect(() => {
     const el = codeRef.current;
@@ -52,25 +78,44 @@ function FencedCodeBlock({ language, code }: { language: string; code: string })
     Prism.highlightElement(el);
   }, [code, language]);
 
+  useEffect(() => {
+    if (copyState === 'idle') return;
+    const timeout = window.setTimeout(() => setCopyState('idle'), 1200);
+    return () => window.clearTimeout(timeout);
+  }, [copyState]);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(code);
+      setCopyState('copied');
+    } catch {
+      setCopyState('failed');
+    }
+  };
+
   return (
     <div className="relative group my-4">
       <div className="flex items-center justify-between bg-[#1a1a1a] border border-[#393A41] border-b-0 rounded-t-lg px-4 py-2">
         <span className="text-xs text-gray-400 font-mono">{language}</span>
         <button
           type="button"
-          onClick={() => navigator.clipboard.writeText(code)}
-          className="text-xs text-gray-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+          onClick={handleCopy}
+          aria-label={`Copy ${language} code block`}
+          className="text-xs text-gray-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded px-1 py-0.5"
         >
-          Copy
+          {copyState === 'copied' ? 'Copied' : copyState === 'failed' ? 'Failed' : 'Copy'}
         </button>
+        <span className="sr-only" role="status" aria-live="polite">
+          {copyState === 'copied' ? 'Code copied to clipboard' : copyState === 'failed' ? 'Failed to copy code to clipboard' : ''}
+        </span>
       </div>
       <pre
-        className={`language-${language} !mt-0 !rounded-t-none !rounded-b-lg max-w-full min-w-0 !whitespace-pre-wrap break-words [overflow-wrap:anywhere] px-4 py-3 text-sm`}
+        className={`language-${language} mt-0! rounded-t-none! rounded-b-lg! max-w-full min-w-0 whitespace-pre-wrap! wrap-anywhere px-4 py-3 text-sm`}
         suppressHydrationWarning
       >
         <code
           ref={codeRef}
-          className={`language-${language} !whitespace-pre-wrap break-words [overflow-wrap:anywhere]`}
+          className={`language-${language} whitespace-pre-wrap! wrap-anywhere`}
           suppressHydrationWarning
         >
           {code}
@@ -105,15 +150,17 @@ export default function BlogContent({ content }: BlogContentProps) {
                 href={safeHref}
                 target={isExternal ? '_blank' : undefined}
                 rel={isExternal ? 'noopener noreferrer' : undefined}
-                className="text-blue-400 hover:text-blue-300 underline"
+                aria-label={isExternal ? `External link: ${safeHref} (opens in a new tab)` : undefined}
+                className="text-blue-400 hover:text-blue-300 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400 rounded-sm"
               >
                 {children}
+                {isExternal ? <span className="sr-only"> (opens in a new tab)</span> : null}
               </a>
             );
           },
           img: ({ src, alt }) => {
             const srcStr = typeof src === "string" ? src : undefined;
-            const safe = srcStr ? sanitizeLinkHref(srcStr) : null;
+            const safe = srcStr ? sanitizeImageSrc(srcStr) : null;
             if (!safe) {
               return null;
             }
@@ -136,11 +183,10 @@ export default function BlogContent({ content }: BlogContentProps) {
             </blockquote>
           ),
           code: ({ className, children }) => {
-            const match = /language-(\w+)/.exec(className || '');
-            const language = match ? match[1] : 'text';
+            const language = getLanguageFromClassName(className);
             const code = String(children).replace(/\n$/, '');
 
-            if (!match) {
+            if (!language) {
               return (
                 <code className="bg-[#26262C] px-1.5 py-0.5 rounded text-sm font-mono text-pink-400">
                   {children}

@@ -224,5 +224,37 @@ class NormalizationTelemetryTests(unittest.TestCase):
         )
 
 
+class InlineImageValidationTests(unittest.TestCase):
+    def test_unreachable_image_is_replaced_with_source_link(self):
+        original_checker = generator._image_url_is_fetchable
+        generator._image_url_is_fetchable = lambda _url: False
+        try:
+            content = "Intro\n\n![smart glasses design](https://cdn.example.com/a.jpg)\n\nMore"
+            out = generator.process_inline_images(
+                content,
+                source_name="Engadget",
+                source_url="https://www.engadget.com/story",
+            )
+            self.assertNotIn("![smart glasses design]", out)
+            self.assertIn("image not available from source CDN right now", out)
+            self.assertIn("https://www.engadget.com/story", out)
+        finally:
+            generator._image_url_is_fetchable = original_checker
+
+    def test_reachable_image_is_kept(self):
+        original_checker = generator._image_url_is_fetchable
+        generator._image_url_is_fetchable = lambda _url: True
+        try:
+            content = "![chip photo](https://cdn.example.com/chip.jpg)"
+            out = generator.process_inline_images(
+                content,
+                source_name="Example Source",
+                source_url="https://example.com/post",
+            )
+            self.assertIn("![chip photo](https://cdn.example.com/chip.jpg)", out)
+        finally:
+            generator._image_url_is_fetchable = original_checker
+
+
 if __name__ == "__main__":
     unittest.main()

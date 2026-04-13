@@ -3,6 +3,7 @@ import json
 import re
 import html
 import threading
+import requests
 import google.generativeai as genai
 from openai import OpenAI
 from typing import Optional, Dict, Any, List
@@ -17,6 +18,13 @@ logger = get_logger("generator")
 _NORMALIZATION_FALLBACK_COUNTS: Dict[str, int] = {}
 _NORMALIZATION_FALLBACK_BY_MODEL: Dict[str, Dict[str, int]] = {}
 _NORMALIZATION_METRICS_LOCK = threading.Lock()
+_IMAGE_URL_CHECK_CACHE: Dict[str, bool] = {}
+_IMAGE_URL_CHECK_TIMEOUT_SECONDS = float(os.getenv("IMAGE_URL_CHECK_TIMEOUT_SECONDS", "4"))
+_VERIFY_INLINE_IMAGES = os.getenv("VERIFY_INLINE_IMAGES", "1").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
@@ -474,6 +482,31 @@ def _image_tail_already_attributed(tail: str) -> bool:
     return False
 
 
+def _image_url_is_fetchable(url: str) -> bool:
+    """Best-effort check that a URL responds as an image."""
+    if not url:
+        return False
+    if url in _IMAGE_URL_CHECK_CACHE:
+        return _IMAGE_URL_CHECK_CACHE[url]
+
+    ok = False
+    try:
+        response = requests.head(url, allow_redirects=True, timeout=_IMAGE_URL_CHECK_TIMEOUT_SECONDS)
+        content_type = (response.headers.get("content-type") or "").lower()
+        if response.status_code < 400 and content_type.startswith("image/"):
+            ok = True
+        elif response.status_code < 400:
+            # Some origins don't expose useful HEAD content-type; try GET fallback.
+            response = requests.get(url, stream=True, allow_redirects=True, timeout=_IMAGE_URL_CHECK_TIMEOUT_SECONDS)
+            content_type = (response.headers.get("content-type") or "").lower()
+            ok = response.status_code < 400 and content_type.startswith("image/")
+    except Exception:
+        ok = False
+
+    _IMAGE_URL_CHECK_CACHE[url] = ok
+    return ok
+
+
 def process_inline_images(content: str, source_name: str, source_url: str) -> str:
     """Strip hotlinked images or append attribution pointing at the cited article."""
     if not content:
@@ -500,6 +533,23 @@ def process_inline_images(content: str, source_name: str, source_url: str) -> st
     last = 0
     label = source_name.strip() or "Original article"
     for m in _MARKDOWN_IMAGE.finditer(content):
+        alt = (m.group(1) or "").strip() or "Photo"
+        image_url = (m.group(2) or "").strip()
+        image_md = content[m.start() : m.end()]
+        if _VERIFY_INLINE_IMAGES and not _image_url_is_fetchable(image_url):
+            label = source_name.strip() or "original article"
+            if source_url.strip():
+                parts.append(content[last : m.start()])
+                parts.append(
+                    f"*{alt}: image not available from source CDN right now; "
+                    f"[open the original article ({label})]({source_url}) to view context.*"
+                )
+            else:
+                parts.append(content[last : m.start()])
+                parts.append(f"*{alt} (image omitted; original image URL unavailable).*")
+            last = m.end()
+            continue
+
         parts.append(content[last : m.end()])
         tail = content[m.end() : m.end() + 800]
         if source_url in tail or _image_tail_already_attributed(tail):
