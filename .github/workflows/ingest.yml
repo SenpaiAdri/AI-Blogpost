@@ -31,6 +31,10 @@ jobs:
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
           OPEN_ROUTER_API_KEY: ${{ secrets.OPEN_ROUTER_API_KEY }}
+          STRIP_MARKDOWN_IMAGES: ${{ secrets.STRIP_MARKDOWN_IMAGES }}
+          ALLOW_INLINE_IMAGE_DOMAINS: ${{ secrets.ALLOW_INLINE_IMAGE_DOMAINS }}
+          VERIFY_INLINE_IMAGES: ${{ secrets.VERIFY_INLINE_IMAGES }}
+          IMAGE_URL_CHECK_TIMEOUT_SECONDS: ${{ secrets.IMAGE_URL_CHECK_TIMEOUT_SECONDS }}
         run: python backend/src/main.py
 
       - name: Report status

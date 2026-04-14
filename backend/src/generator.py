@@ -9,6 +9,7 @@ from openai import OpenAI
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 import hashlib
+from urllib.parse import urlparse
 
 from logger import get_logger
 from metrics import cost_tracker, estimate_tokens, register_summary_provider
@@ -25,6 +26,11 @@ _VERIFY_INLINE_IMAGES = os.getenv("VERIFY_INLINE_IMAGES", "1").strip().lower() i
     "true",
     "yes",
 )
+_INLINE_IMAGE_ALLOWED_DOMAINS = {
+    d.strip().lower()
+    for d in os.getenv("ALLOW_INLINE_IMAGE_DOMAINS", "").split(",")
+    if d.strip()
+}
 
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
@@ -507,6 +513,18 @@ def _image_url_is_fetchable(url: str) -> bool:
     return ok
 
 
+def _image_domain_is_allowed(url: str) -> bool:
+    """Allow inline image embeds only from configured domains when set."""
+    if not _INLINE_IMAGE_ALLOWED_DOMAINS:
+        return True
+    try:
+        host = (urlparse(url).netloc or "").lower()
+    except Exception:
+        return False
+    host = host.split(":")[0]
+    return any(host == allowed or host.endswith(f".{allowed}") for allowed in _INLINE_IMAGE_ALLOWED_DOMAINS)
+
+
 def process_inline_images(content: str, source_name: str, source_url: str) -> str:
     """Strip hotlinked images or append attribution pointing at the cited article."""
     if not content:
@@ -535,7 +553,19 @@ def process_inline_images(content: str, source_name: str, source_url: str) -> st
     for m in _MARKDOWN_IMAGE.finditer(content):
         alt = (m.group(1) or "").strip() or "Photo"
         image_url = (m.group(2) or "").strip()
-        image_md = content[m.start() : m.end()]
+        if not _image_domain_is_allowed(image_url):
+            label = source_name.strip() or "original article"
+            parts.append(content[last : m.start()])
+            if source_url.strip():
+                parts.append(
+                    f"*{alt}: image omitted due to site embedding policy; "
+                    f"[open the original article ({label})]({source_url}) to view it.*"
+                )
+            else:
+                parts.append(f"*{alt} (image omitted due to site embedding policy).*")
+            last = m.end()
+            continue
+
         if _VERIFY_INLINE_IMAGES and not _image_url_is_fetchable(image_url):
             label = source_name.strip() or "original article"
             if source_url.strip():

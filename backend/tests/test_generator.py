@@ -255,6 +255,46 @@ class InlineImageValidationTests(unittest.TestCase):
         finally:
             generator._image_url_is_fetchable = original_checker
 
+    def test_disallowed_domain_is_replaced_with_policy_message(self):
+        original_checker = generator._image_url_is_fetchable
+        original_allow = set(generator._INLINE_IMAGE_ALLOWED_DOMAINS)
+        generator._image_url_is_fetchable = lambda _url: True
+        generator._INLINE_IMAGE_ALLOWED_DOMAINS.clear()
+        generator._INLINE_IMAGE_ALLOWED_DOMAINS.add("images.example.com")
+        try:
+            content = "![smart glasses](https://cdn.other.com/image.jpg)"
+            out = generator.process_inline_images(
+                content,
+                source_name="Engadget",
+                source_url="https://www.engadget.com/story",
+            )
+            self.assertNotIn("![smart glasses](https://cdn.other.com/image.jpg)", out)
+            self.assertIn("image omitted due to site embedding policy", out)
+            self.assertIn("https://www.engadget.com/story", out)
+        finally:
+            generator._image_url_is_fetchable = original_checker
+            generator._INLINE_IMAGE_ALLOWED_DOMAINS.clear()
+            generator._INLINE_IMAGE_ALLOWED_DOMAINS.update(original_allow)
+
+    def test_allowed_subdomain_is_kept_when_allowlist_enabled(self):
+        original_checker = generator._image_url_is_fetchable
+        original_allow = set(generator._INLINE_IMAGE_ALLOWED_DOMAINS)
+        generator._image_url_is_fetchable = lambda _url: True
+        generator._INLINE_IMAGE_ALLOWED_DOMAINS.clear()
+        generator._INLINE_IMAGE_ALLOWED_DOMAINS.add("example.com")
+        try:
+            content = "![photo](https://images.example.com/photo.jpg)"
+            out = generator.process_inline_images(
+                content,
+                source_name="Example",
+                source_url="https://example.com/post",
+            )
+            self.assertIn("![photo](https://images.example.com/photo.jpg)", out)
+        finally:
+            generator._image_url_is_fetchable = original_checker
+            generator._INLINE_IMAGE_ALLOWED_DOMAINS.clear()
+            generator._INLINE_IMAGE_ALLOWED_DOMAINS.update(original_allow)
+
 
 if __name__ == "__main__":
     unittest.main()
