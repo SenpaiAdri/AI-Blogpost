@@ -50,7 +50,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
       <Navbar />
 
       <div className="w-full flex justify-center">
-        <main className="w-full max-w-4xl border-x-2 border-[#6A6B70] border-dashed min-h-screen pt-24 px-4 sm:px-8 pb-20">
+        <main className="w-full max-w-4xl sm:border-x-2 sm:border-[#6A6B70] sm:border-dashed min-h-screen pt-24 px-6 sm:px-8 pb-20">
           <div className="max-w-3xl mx-auto space-y-5">
             <header className="space-y-4">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight">

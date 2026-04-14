@@ -64,8 +64,8 @@ export default async function Home({
 
       <div className="w-full flex justify-center">
         <main
-          className="w-full max-w-4xl border-x-2 border-[#6A6B70] border-dashed min-h-screen pt-19 px-2 pb-10 
-        sm:pb-20 sm:px-4 sm:pt-21
+          className="w-full max-w-4xl sm:border-x-2 sm:border-[#6A6B70] sm:border-dashed min-h-screen pt-19 px-4 pb-10 
+        sm:pb-20 sm:pt-21
         md:px-8 md:pt-24"
         >
           <div className="w-full space-y-6">
