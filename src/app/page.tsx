@@ -1,13 +1,12 @@
-import BlogCard from "@/components/BlogCard";
 import Navbar from "@/components/Navbar";
 import TopicFilterBar from "@/components/TopicFilterBar";
-import TransitionLink from "@/components/TransitionLink";
+import PostFeed from "@/components/PostFeed";
+import BackToTopButton from "@/components/BackToTopButton";
 import {
-  aggregateTagsWithCounts,
-  getPosts,
+  getPaginatedPosts,
   getTagBySlug,
+  getTagsWithPostCounts,
 } from "@/lib/posts";
-import { Post } from "@/lib/types";
 import type { Metadata } from "next";
 
 export const revalidate = 120;
@@ -42,26 +41,22 @@ export default async function Home({
 }) {
   const { tag: tagParam } = await searchParams;
   const rawTag = tagParam?.trim() || "";
-
-  const allPosts = await getPosts();
-  const tagRows = aggregateTagsWithCounts(allPosts);
+  const tagRows = await getTagsWithPostCounts();
 
   const activeTag = rawTag ? await getTagBySlug(rawTag) : null;
-  let posts: Post[];
   let tagQueryInvalid = false;
+  const effectiveTagSlug = activeTag?.slug ?? null;
 
   if (rawTag) {
-    if (activeTag) {
-      posts = allPosts.filter((p) =>
-        p.tags?.some((t) => t.slug === activeTag.slug)
-      );
-    } else {
+    if (!activeTag) {
       tagQueryInvalid = true;
-      posts = allPosts;
     }
-  } else {
-    posts = allPosts;
   }
+  const initialPage = await getPaginatedPosts(
+    0,
+    10,
+    tagQueryInvalid ? undefined : effectiveTagSlug ?? undefined
+  );
 
   return (
     <div className="min-h-screen w-full bg-[#131316] text-white">
@@ -79,60 +74,17 @@ export default async function Home({
               activeSlug={activeTag?.slug ?? null}
               tagQueryInvalid={tagQueryInvalid}
             />
-
-            {activeTag && !tagQueryInvalid && (
-              <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
-                <h2 className="text-lg font-bold text-white">
-                  <span className="text-[#6A6B70] font-semibold text-sm uppercase tracking-wider mr-2">
-                    Topic
-                  </span>
-                  {activeTag.name}
-                </h2>
-                <p className="text-sm text-[#6A6B70]">
-                  {posts.length} post{posts.length === 1 ? "" : "s"}
-                </p>
-              </div>
-            )}
-
-            {posts && posts.length > 0 ? (
-              posts.map((post: Post) => (
-                <BlogCard key={post.id} post={post} />
-              ))
-            ) : (
-              <div className="text-center text-gray-500 mt-16 space-y-2">
-                <p>
-                  {activeTag && !tagQueryInvalid
-                    ? "No published posts with this tag yet."
-                    : "No posts found."}
-                </p>
-                <p className="text-sm text-[#6A6B70]">
-                  {activeTag && !tagQueryInvalid
-                    ? "Try another topic or view all posts."
-                    : "Check back after the next ingest run."}
-                </p>
-                {activeTag && !tagQueryInvalid && (
-                  <p className="pt-4">
-                    <TransitionLink
-                      href="/"
-                      className="text-sm font-bold text-red-400 hover:underline uppercase tracking-wide"
-                    >
-                      Clear filter
-                    </TransitionLink>
-                  </p>
-                )}
-              </div>
-            )}
-
-            {posts && posts.length > 0 && (
-              <p className="text-center text-sm text-gray-400 px-10 sm:pt-10 sm:pb-6">
-                {activeTag && !tagQueryInvalid
-                  ? "End of results for this topic."
-                  : "That's all for now! Check back after the next update."}
-              </p>
-            )}
+            <PostFeed
+              initialPosts={initialPage.posts}
+              activeTagSlug={effectiveTagSlug}
+              activeTagName={activeTag?.name ?? null}
+              tagQueryInvalid={tagQueryInvalid}
+              pageSize={10}
+            />
           </div>
         </main>
       </div>
+      <BackToTopButton />
     </div>
   );
 }

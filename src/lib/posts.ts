@@ -149,3 +149,19 @@ export async function getAllPostSlugs(): Promise<{ slug: string }[]> {
     const { data: posts } = await supabase.from("posts").select("slug");
     return posts?.map(({ slug }) => ({ slug })) || [];
 }
+
+export async function getPaginatedPosts(
+    offset: number,
+    limit: number,
+    tagSlug?: string
+): Promise<{ posts: Post[]; hasMore: boolean }> {
+    const safeOffset = Math.max(0, offset || 0);
+    const safeLimit = Math.min(Math.max(1, limit || 10), 50);
+    const allPosts = await getPosts();
+    const filtered = tagSlug
+        ? allPosts.filter((p) => p.tags?.some((t) => t.slug === tagSlug))
+        : allPosts;
+    const page = filtered.slice(safeOffset, safeOffset + safeLimit);
+    const hasMore = safeOffset + safeLimit < filtered.length;
+    return { posts: page, hasMore };
+}
