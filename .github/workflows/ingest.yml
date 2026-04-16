@@ -2,7 +2,7 @@ name: AI Blog Post Ingestion
 
 on:
   schedule:
-    - cron: '0 6,18 * * *'  # 6:00 AM and 6:00 PM UTC daily
+    - cron: '0 0,12 * * *'  # 12:00 AM / 12:00 PM UTC → 8:00 AM / 8:00 PM PHT (UTC+8)
   workflow_dispatch:  # Manual trigger
 
 jobs:
