@@ -82,7 +82,7 @@ _TECH_KEYWORD_PATTERNS = [
 ]
 
 # Near-duplicate headlines across syndicated feeds (wording differs slightly).
-_FUZZY_TITLE_RATIO = 0.86
+_FUZZY_TITLE_RATIO = 0.75
 _FUZZY_MIN_CHARS = 28
 _FUZZY_MIN_WORDS = 4
 
@@ -142,37 +142,55 @@ def normalize_title_for_dedupe(title: str) -> str:
 def dedupe_news_items(items: List[NewsItem]) -> List[NewsItem]:
     """
     Drop repeats across feeds. Assumes items are sorted newest-first.
-    Skips duplicate normalized URLs, identical normalized titles, or fuzzy title matches.
+    - Same URL: skip (exact duplicate)
+    - Same title + same source: skip (exact duplicate from source)
+    - Similar title + same source: skip (fuzzy duplicate from source)
+    - Different source: KEEP ALL (trending topics should be covered from multiple sources)
     """
     seen_urls: set = set()
-    seen_titles: set = set()
-    kept_title_norms: List[str] = []
+    seen_titles_by_source: dict = {}
+    kept_titles: List[tuple] = []
     out: List[NewsItem] = []
     skipped_url = 0
-    skipped_title = 0
-    skipped_fuzzy = 0
+    skipped_same_source = 0
+    
     for item in items:
+        source = (item.source or "unknown").strip().lower()
         key_url = normalize_feed_url(item.link)
         if not key_url:
             key_url = item.link.strip()
+        
+        # Skip exact URL duplicates
         if key_url in seen_urls:
             skipped_url += 1
             continue
-        nt = normalize_title_for_dedupe(item.title)
-        if nt and nt in seen_titles:
-            skipped_title += 1
-            continue
-        if nt:
-            if any(titles_are_fuzzy_duplicates(nt, prev) for prev in kept_title_norms):
-                skipped_fuzzy += 1
-                continue
         seen_urls.add(key_url)
+        
+        nt = normalize_title_for_dedupe(item.title)
+        
+        # Track titles per source
         if nt:
-            seen_titles.add(nt)
-            kept_title_norms.append(nt)
+            if nt not in seen_titles_by_source:
+                seen_titles_by_source[nt] = set()
+            
+            # Skip if same title AND same source
+            if source in seen_titles_by_source[nt]:
+                skipped_same_source += 1
+                continue
+            
+            # Check fuzzy duplicate ONLY for same source (allow multi-source trending topics)
+            if any(titles_are_fuzzy_duplicates(nt, prev_title) for prev_title, prev_source in kept_titles if prev_source == source):
+                skipped_same_source += 1
+                continue
+            
+            seen_titles_by_source[nt].add(source)
+            kept_titles.append((nt, source))
+        
         out.append(item)
-    if skipped_url or skipped_title or skipped_fuzzy:
-        logger.info(f"  Dedupe: skipped {skipped_url} url, {skipped_title} title, {skipped_fuzzy} fuzzy duplicate(s)")
+    
+    total_skipped = skipped_url + skipped_same_source
+    if total_skipped > 0:
+        logger.info(f"  Dedupe: skipped {skipped_url} url, {skipped_same_source} same-source duplicate(s), kept {len(out)} items")
     return out
 
 
