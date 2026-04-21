@@ -6,10 +6,10 @@ from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 load_dotenv(env_path)
 
+from config import DUPLICATE_CHECK_DAYS
+
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-
-_DUPLICATE_CHECK_DAYS = 3
 
 
 def get_supabase_client():
@@ -25,9 +25,9 @@ def check_duplicate_url(client, url: str) -> bool:
 
 
 def get_all_existing_urls(client, days: int = None) -> set:
-    """Get existing source URLs from the last N days (default 3)."""
+    """Get existing source URLs from the last N days (default from config.py)."""
     if days is None:
-        days = _DUPLICATE_CHECK_DAYS
+        days = DUPLICATE_CHECK_DAYS
     
     cutoff = (datetime.now() - timedelta(days=days)).isoformat()
     response = client.from_("posts").select("source_url").gte("published_at", cutoff).execute()

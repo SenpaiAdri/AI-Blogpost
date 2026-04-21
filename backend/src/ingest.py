@@ -9,6 +9,16 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import List, Optional
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
+from config import (
+    FUZZY_TITLE_RATIO,
+    FUZZY_MIN_CHARS,
+    FUZZY_MIN_WORDS,
+    MAX_PER_SOURCE,
+    MAX_CANDIDATES,
+    FETCH_ITEMS_PER_FEED,
+    MAX_FEED_WORKERS,
+    RSS_TIMEOUT_SECONDS,
+)
 from logger import get_logger
 from rate_limit import wait_for_url
 from rss_feeds import RSS_FEEDS
@@ -81,11 +91,7 @@ _TECH_KEYWORD_PATTERNS = [
     if kw.strip()
 ]
 
-# Near-duplicate headlines across syndicated feeds (wording differs slightly).
-_FUZZY_TITLE_RATIO = 0.75
-_FUZZY_MIN_CHARS = 28
-_FUZZY_MIN_WORDS = 4
-
+# Fuzzy duplicate configs now loaded from config.py
 
 def _title_word_count(normalized: str) -> int:
     return len(normalized.split()) if normalized else 0
@@ -101,11 +107,11 @@ def titles_are_fuzzy_duplicates(a: str, b: str) -> bool:
     shorter, longer = min(la, lb), max(la, lb)
     if shorter / longer < 0.65:
         return False
-    if la < _FUZZY_MIN_CHARS or lb < _FUZZY_MIN_CHARS:
+    if la < FUZZY_MIN_CHARS or lb < FUZZY_MIN_CHARS:
         return False
-    if _title_word_count(a) < _FUZZY_MIN_WORDS or _title_word_count(b) < _FUZZY_MIN_WORDS:
+    if _title_word_count(a) < FUZZY_MIN_WORDS or _title_word_count(b) < FUZZY_MIN_WORDS:
         return False
-    return difflib.SequenceMatcher(None, a, b).ratio() >= _FUZZY_TITLE_RATIO
+    return difflib.SequenceMatcher(None, a, b).ratio() >= FUZZY_TITLE_RATIO
 
 
 def normalize_feed_url(url: str) -> str:
@@ -234,7 +240,7 @@ def fetch_all_news() -> List[NewsItem]:
     all_news = []
     failed_feeds = []
     
-    with ThreadPoolExecutor(max_workers=10) as executor:
+    with ThreadPoolExecutor(max_workers=MAX_FEED_WORKERS) as executor:
         future_to_feed = {
             executor.submit(fetch_feed, feed_config): feed_config 
             for feed_config in RSS_FEEDS
@@ -278,7 +284,7 @@ def get_latest_news(limit: int = 10) -> List[NewsItem]:
     """Get the latest tech news items (keyword-filtered)."""
     all_news = fetch_all_news()
     tech_news = filter_tech_news(all_news)
-    diversified = diversify_news_items(tech_news, limit=limit, max_per_source=2)
+    diversified = diversify_news_items(tech_news, limit=limit, max_per_source=MAX_PER_SOURCE)
     return diversified
 
 
