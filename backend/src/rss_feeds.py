@@ -15,7 +15,7 @@ RSS_FEEDS = [
     {"name": "The Hacker News", "url": "https://feeds.feedburner.com/TheHackerNews"},
     {"name": "Dark Reading", "url": "https://www.darkreading.com/rss.xml"},
     {"name": "SecurityWeek", "url": "https://www.securityweek.com/feed/"},
-    {"name": "The Cyber Post", "url": "https://thecyberpost.com/feed/"},
+    # {"name": "The Cyber Post", "url": "https://thecyberpost.com/feed/"},
     {"name": "GitHub Blog", "url": "https://github.blog/feed/"},
     {"name": "AWS Blog", "url": "https://aws.amazon.com/blogs/aws/feed/"},
     {"name": "OpenAI Blog", "url": "https://openai.com/blog/rss.xml"},
