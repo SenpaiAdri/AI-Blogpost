@@ -34,10 +34,13 @@ TECH_KEYWORDS = [
     "ai", "artificial intelligence", "machine learning", "deep learning",
     "gpt", "llm", "neural", "chatgpt", "openai", "anthropic", "deepmind",
     "gemini", "claude", "llama", "gemma", "mistral", "nvidia", "stable diffusion",
-    "large language model", "generative",
+    "large language model", "generative", "deepseek", "multimodal", "agentic",
+    "slm", "small language model", "edge ai", "physical ai", "reasoning model",
     # Security / IT operations
     "security", "cybersecurity", "ransomware", "vulnerability", "breach", "malware",
     "patch", "encryption", "privacy", "phishing", "zero-day", "zeroday",
+    "deepfake", "supply chain attack", "post-quantum", "pqc", "identity",
+    "infostealer", "data breach", "threat", "exploit", "cve",
     # Cloud / infrastructure / DevOps
     "cloud", "kubernetes", "docker", "devops", "aws", "azure", "gcp",
     "server", "datacenter", "data center", "infrastructure",
@@ -55,7 +58,11 @@ TECH_KEYWORDS = [
     "redis", "mongodb", "elasticsearch", "kafka", "rabbitmq",
     "bun", "deno", "webpack", "vite",
     # Hardware / chips
-    "semiconductor", "processor", "chip", "intel", "amd", "apple silicon",
+    "semiconductor", "processor", "chip", "intel", "amd", "apple silicon", "nvidia", "gpu", "cuda",
+    # Robotics / Physical AI
+    "robotics", "robot", "humanoid", "drone",
+    # Quantum computing
+    "quantum", "qubit", "qpu", "quantum computing", "quantum computer",
     # Enterprise / SaaS
     "enterprise", "saas", "startup",
     # Big tech (common in IT headlines)
@@ -141,23 +148,31 @@ def dedupe_news_items(items: List[NewsItem]) -> List[NewsItem]:
     seen_titles: set = set()
     kept_title_norms: List[str] = []
     out: List[NewsItem] = []
+    skipped_url = 0
+    skipped_title = 0
+    skipped_fuzzy = 0
     for item in items:
         key_url = normalize_feed_url(item.link)
         if not key_url:
             key_url = item.link.strip()
         if key_url in seen_urls:
+            skipped_url += 1
             continue
         nt = normalize_title_for_dedupe(item.title)
         if nt and nt in seen_titles:
+            skipped_title += 1
             continue
         if nt:
             if any(titles_are_fuzzy_duplicates(nt, prev) for prev in kept_title_norms):
+                skipped_fuzzy += 1
                 continue
         seen_urls.add(key_url)
         if nt:
             seen_titles.add(nt)
             kept_title_norms.append(nt)
         out.append(item)
+    if skipped_url or skipped_title or skipped_fuzzy:
+        logger.info(f"  Dedupe: skipped {skipped_url} url, {skipped_title} title, {skipped_fuzzy} fuzzy duplicate(s)")
     return out
 
 
@@ -273,7 +288,7 @@ def parse_entry_datetime(entry: dict, pub_date_str: str) -> datetime:
     return datetime.now()
 
 
-def diversify_news_items(items: List[NewsItem], limit: int, max_per_source: int = 2) -> List[NewsItem]:
+def diversify_news_items(items: List[NewsItem], limit: int, max_per_source: int = 3) -> List[NewsItem]:
     """Pick newest items while capping stories per feed source."""
     if limit <= 0 or not items:
         return []
