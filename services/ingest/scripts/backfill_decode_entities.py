@@ -6,19 +6,19 @@ Older rows may contain numeric entities (e.g. &#x27;) or double-encoded forms
 applies repeated html.unescape until stable, then the same normalization as
 validate_ai_output (whitespace collapse + length caps via security.sanitize_text).
 
-Loads backend/.env. Requires SUPABASE_URL and SUPABASE_SERVICE_KEY (or
+Loads services/ingest/.env. Requires SUPABASE_URL and SUPABASE_SERVICE_KEY (or
 SUPABASE_SERVICE_ROLE_KEY).
 
   # Preview changes
-  python backend/scripts/backfill_decode_entities.py --dry-run
+  python services/ingest/scripts/backfill_decode_entities.py --dry-run
 
   # Apply to all posts
-  python backend/scripts/backfill_decode_entities.py
+  python services/ingest/scripts/backfill_decode_entities.py
 
   # Only first 5 rows (smoke test)
-  python backend/scripts/backfill_decode_entities.py --dry-run --limit 5
+  python services/ingest/scripts/backfill_decode_entities.py --dry-run --limit 5
 
-Requires backend dependencies: pip install -r backend/requirements.txt
+Requires ingest dependencies: pip install -r services/ingest/requirements.txt
 """
 
 from __future__ import annotations
@@ -50,8 +50,8 @@ def main() -> int:
     except ModuleNotFoundError as exc:
         need = exc.name or "dependency"
         print(
-            f'Missing Python module "{need}". Install backend dependencies:\n'
-            "  python3 -m pip install -r backend/requirements.txt",
+            f'Missing Python module "{need}". Install ingest dependencies:\n'
+            "  python3 -m pip install -r services/ingest/requirements.txt",
             file=sys.stderr,
         )
         return 1

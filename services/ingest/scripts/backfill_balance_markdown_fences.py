@@ -6,19 +6,19 @@ after prose and images, the article parses as one giant code block. This script
 runs generator.normalize_markdown_fences (repair leaked prose/images inside fences,
 then balance odd ``` counts) — same as ingest after fix_code_blocks.
 
-Loads backend/.env. Requires SUPABASE_URL and SUPABASE_SERVICE_KEY (or
+Loads services/ingest/.env. Requires SUPABASE_URL and SUPABASE_SERVICE_KEY (or
 SUPABASE_SERVICE_ROLE_KEY).
 
   # Preview changes
-  python backend/scripts/backfill_balance_markdown_fences.py --dry-run
+  python services/ingest/scripts/backfill_balance_markdown_fences.py --dry-run
 
   # Apply to all posts
-  python backend/scripts/backfill_balance_markdown_fences.py
+  python services/ingest/scripts/backfill_balance_markdown_fences.py
 
   # Smoke test on first 5 rows
-  python backend/scripts/backfill_balance_markdown_fences.py --dry-run --limit 5
+  python services/ingest/scripts/backfill_balance_markdown_fences.py --dry-run --limit 5
 
-Requires backend dependencies: pip install -r backend/requirements.txt
+Requires ingest dependencies: pip install -r services/ingest/requirements.txt
 """
 
 from __future__ import annotations
@@ -39,8 +39,8 @@ def main() -> int:
     except ModuleNotFoundError as exc:
         need = exc.name or "dependency"
         print(
-            f'Missing Python module "{need}". Install backend dependencies:\n'
-            "  python3 -m pip install -r backend/requirements.txt",
+            f'Missing Python module "{need}". Install ingest dependencies:\n'
+            "  python3 -m pip install -r services/ingest/requirements.txt",
             file=sys.stderr,
         )
         return 1

@@ -1,0 +1,2 @@
+-- Optional local seed data for AI Blogpost.
+-- Keep production data out of this file.

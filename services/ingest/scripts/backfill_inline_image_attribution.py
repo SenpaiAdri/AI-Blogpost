@@ -8,14 +8,14 @@ unless one is already present or the article URL already appears nearby.
 Respects STRIP_MARKDOWN_IMAGES from the environment (same as ingest): when set to
 1/true/yes, replaces images with a text link to the original article instead.
 
-Loads backend/.env. Requires SUPABASE_URL and SUPABASE_SERVICE_KEY (or
+Loads services/ingest/.env. Requires SUPABASE_URL and SUPABASE_SERVICE_KEY (or
 SUPABASE_SERVICE_ROLE_KEY).
 
-  python backend/scripts/backfill_inline_image_attribution.py --dry-run
-  python backend/scripts/backfill_inline_image_attribution.py
-  python backend/scripts/backfill_inline_image_attribution.py --dry-run --limit 3
+  python services/ingest/scripts/backfill_inline_image_attribution.py --dry-run
+  python services/ingest/scripts/backfill_inline_image_attribution.py
+  python services/ingest/scripts/backfill_inline_image_attribution.py --dry-run --limit 3
 
-Requires backend dependencies: pip install -r backend/requirements.txt
+Requires ingest dependencies: pip install -r services/ingest/requirements.txt
 """
 
 from __future__ import annotations
@@ -60,8 +60,8 @@ def main() -> int:
     except ModuleNotFoundError as exc:
         need = exc.name or "dependency"
         print(
-            f'Missing Python module "{need}". Install backend dependencies:\n'
-            "  python3 -m pip install -r backend/requirements.txt",
+            f'Missing Python module "{need}". Install ingest dependencies:\n'
+            "  python3 -m pip install -r services/ingest/requirements.txt",
             file=sys.stderr,
         )
         return 1

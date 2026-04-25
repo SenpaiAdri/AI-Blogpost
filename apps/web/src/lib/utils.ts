@@ -1,3 +1,5 @@
+import type { Source } from "@/lib/types";
+
 export function formatDate(dateString: string | null | undefined): string {
     if (!dateString) return "";
 
@@ -8,7 +10,7 @@ export function formatDate(dateString: string | null | undefined): string {
     });
 }
 
-export function formatSource(source: any): { name: string; url: string | null } {
+export function formatSource(source: Source | string): { name: string; url: string | null } {
     if (typeof source === 'string') {
         return { name: source, url: null };
     }
