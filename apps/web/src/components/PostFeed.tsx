@@ -11,6 +11,8 @@ type PostFeedProps = {
   activeTagName: string | null;
   tagQueryInvalid: boolean;
   pageSize?: number;
+  initialHasMore?: boolean;
+  isInitialLoading?: boolean;
 };
 
 type PostPageResponse = {
@@ -18,7 +20,7 @@ type PostPageResponse = {
   hasMore: boolean;
 };
 
-function PostCardSkeleton() {
+export function PostCardSkeleton() {
   return (
     <div className="relative block p-6 border-2 border-[#393A41] border-dashed rounded-2xl animate-pulse">
       <div className="h-8 w-2/3 bg-[#26262C] rounded-md mb-4" />
@@ -33,17 +35,36 @@ function PostCardSkeleton() {
   );
 }
 
+export function PostFeedSkeleton({ count = 10 }: { count?: number }) {
+  return (
+    <div className="flex flex-col gap-6">
+      {Array.from({ length: count }).map((_, i) => (
+        <PostCardSkeleton key={i} />
+      ))}
+    </div>
+  );
+}
+
 export default function PostFeed({
   initialPosts,
   activeTagSlug,
   activeTagName,
   tagQueryInvalid,
   pageSize = 10,
+  initialHasMore,
+  isInitialLoading: externalInitialLoading,
 }: PostFeedProps) {
   const [posts, setPosts] = useState<Post[]>(initialPosts);
-  const [hasMore, setHasMore] = useState<boolean>(initialPosts.length >= pageSize);
+  const [hasMore, setHasMore] = useState<boolean>(
+    initialHasMore ?? initialPosts.length >= pageSize
+  );
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+  const [isInitialLoading, setIsInitialLoading] = useState<boolean>(
+    Boolean(externalInitialLoading)
+  );
   const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const postsLoadedRef = useRef(false);
 
   const emptyPrimary = useMemo(() => {
     return activeTagSlug && !tagQueryInvalid
@@ -65,9 +86,18 @@ export default function PostFeed({
 
   useEffect(() => {
     setPosts(initialPosts);
-    setHasMore(initialPosts.length >= pageSize);
+    setHasMore(initialHasMore ?? initialPosts.length >= pageSize);
     setIsLoadingMore(false);
-  }, [initialPosts, pageSize, activeTagSlug]);
+    setIsInitialLoading(Boolean(externalInitialLoading));
+  }, [initialPosts, initialHasMore, pageSize, activeTagSlug, externalInitialLoading]);
+
+  useEffect(() => {
+    if (postsLoadedRef.current) return;
+    if (posts.length > 0) {
+      postsLoadedRef.current = true;
+      setIsInitialLoading(false);
+    }
+  }, [posts.length]);
 
   useEffect(() => {
     const node = sentinelRef.current;
@@ -120,6 +150,10 @@ export default function PostFeed({
     observer.observe(node);
     return () => observer.disconnect();
   }, [activeTagSlug, hasMore, isLoadingMore, pageSize, posts.length, tagQueryInvalid]);
+
+  if (isInitialLoading) {
+    return <PostFeedSkeleton count={pageSize} />;
+  }
 
   if (!posts.length) {
     return (

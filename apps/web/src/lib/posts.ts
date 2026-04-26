@@ -1,6 +1,15 @@
 import { supabase } from "@/lib/supabase";
 import { Post, PostRow, Tag } from "@/lib/types";
 
+const POSTS_WITH_TAGS_SELECT = `
+      *,
+      post_tags (
+        tags (
+          *
+        )
+      )
+    `;
+
 function mapRowsToPosts(rawPosts: PostRow[] | null): Post[] {
     return (rawPosts || []).map((post) => {
         const tags = post.post_tags?.map((pt) => pt.tags) || [];
@@ -14,14 +23,7 @@ function mapRowsToPosts(rawPosts: PostRow[] | null): Post[] {
 export async function getPosts(): Promise<Post[]> {
     const { data: rawPosts, error } = await supabase
         .from("posts")
-        .select(`
-      *,
-      post_tags (
-        tags (
-          *
-        )
-      )
-    `)
+        .select(POSTS_WITH_TAGS_SELECT)
         .eq("is_published", true)
         .order("published_at", { ascending: false });
 
@@ -66,16 +68,7 @@ export async function getPostsByTagSlug(tagSlug: string): Promise<Post[]> {
 
     const { data: rawPosts, error } = await supabase
         .from("posts")
-        .select(
-            `
-      *,
-      post_tags (
-        tags (
-          *
-        )
-      )
-    `
-        )
+        .select(POSTS_WITH_TAGS_SELECT)
         .in("id", postIds)
         .eq("is_published", true)
         .order("published_at", { ascending: false });
@@ -120,14 +113,7 @@ export async function getTagsWithPostCounts(): Promise<TagWithCount[]> {
 export async function getPostBySlug(slug: string): Promise<Post | null> {
     const { data: postData, error } = await supabase
         .from("posts")
-        .select(`
-      *,
-      post_tags (
-        tags (
-          *
-        )
-      )
-    `)
+        .select(POSTS_WITH_TAGS_SELECT)
         .eq("slug", slug)
         .single();
 
@@ -157,11 +143,46 @@ export async function getPaginatedPosts(
 ): Promise<{ posts: Post[]; hasMore: boolean }> {
     const safeOffset = Math.max(0, offset || 0);
     const safeLimit = Math.min(Math.max(1, limit || 10), 50);
-    const allPosts = await getPosts();
-    const filtered = tagSlug
-        ? allPosts.filter((p) => p.tags?.some((t) => t.slug === tagSlug))
-        : allPosts;
-    const page = filtered.slice(safeOffset, safeOffset + safeLimit);
-    const hasMore = safeOffset + safeLimit < filtered.length;
-    return { posts: page, hasMore };
+
+    let query = supabase
+        .from("posts")
+        .select(POSTS_WITH_TAGS_SELECT)
+        .eq("is_published", true)
+        .order("published_at", { ascending: false })
+        // Fetch one extra row so we can answer hasMore without a count query.
+        .range(safeOffset, safeOffset + safeLimit);
+
+    if (tagSlug) {
+        const tag = await getTagBySlug(tagSlug);
+        if (!tag) {
+            return { posts: [], hasMore: false };
+        }
+
+        const { data: links, error: linkErr } = await supabase
+            .from("post_tags")
+            .select("post_id")
+            .eq("tag_id", tag.id);
+
+        if (linkErr || !links?.length) {
+            if (linkErr) {
+                console.error("Error fetching post links by tag:", linkErr);
+            }
+            return { posts: [], hasMore: false };
+        }
+
+        query = query.in("id", [...new Set(links.map((l) => l.post_id as string))]);
+    }
+
+    const { data: rawPosts, error } = await query;
+
+    if (error) {
+        console.error("Error fetching paginated posts:", error);
+        return { posts: [], hasMore: false };
+    }
+
+    const rows = (rawPosts || []) as unknown as PostRow[];
+    return {
+        posts: mapRowsToPosts(rows.slice(0, safeLimit)),
+        hasMore: rows.length > safeLimit,
+    };
 }
