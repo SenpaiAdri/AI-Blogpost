@@ -2,6 +2,7 @@
 
 # dependencies
 /node_modules
+/apps/web/node_modules
 /.pnp
 .pnp.*
 .yarn/*
@@ -15,10 +16,13 @@
 
 # next.js
 /.next/
+/apps/web/.next/
 /out/
+/apps/web/out/
 
 # production
 /build
+/apps/web/build
 
 # misc
 .DS_Store
@@ -58,4 +62,4 @@ logs/
 *.log
 
 # vscodelogs/
-backend/__pycache__/
+services/ingest/__pycache__/

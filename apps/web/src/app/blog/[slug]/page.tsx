@@ -69,10 +69,10 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
               <div className="px-4">
                 <p className="text-xs sm:text-sm font-bold text-[#808080] my-2">TL;DR</p>
                 <ul className="space-y-2">
-                  {post.tldr.map((item: string | any, index: number) => (
+                  {post.tldr.map((item: string, index: number) => (
                     <li key={index} className="flex items-start text-white text-sm sm:text-base">
                       <span className="mr-2">•</span>
-                      <span>{typeof item === 'string' ? item : item.name}</span>
+                      <span>{item}</span>
                     </li>
                   ))}
                 </ul>
@@ -89,7 +89,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                 }
 
                 <div className="flex flex-wrap gap-3">
-                  {post.source_url.map((source: any, i) => {
+                  {post.source_url.map((source, i) => {
                     const { name, url } = formatSource(source);
                     return url ? (
                       <a

@@ -3,8 +3,8 @@ name: RSS feed health
 on:
   pull_request:
     paths:
-      - "backend/src/rss_feeds.py"
-      - "backend/scripts/check_rss_feeds.py"
+      - "services/ingest/src/rss_feeds.py"
+      - "services/ingest/scripts/check_rss_feeds.py"
       - ".github/workflows/rss-health.yml"
   push:
     branches: [main]
@@ -23,4 +23,4 @@ jobs:
           python-version: "3.12"
 
       - name: Check RSS endpoints
-        run: python3 backend/scripts/check_rss_feeds.py
+        run: python3 services/ingest/scripts/check_rss_feeds.py

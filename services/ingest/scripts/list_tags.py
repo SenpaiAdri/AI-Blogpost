@@ -1,15 +1,15 @@
 #!/usr/bin/env python3
 """List every tag in Supabase with optional published post counts.
 
-Loads backend/.env (same as the ingest pipeline). Requires service role access.
+Loads services/ingest/.env (same as the ingest pipeline). Requires service role access.
 
-Requires backend Python deps (same as ingest), e.g. from repo root:
+Requires ingest Python deps, e.g. from repo root:
 
-  python3 -m pip install -r backend/requirements.txt
+  python3 -m pip install -r services/ingest/requirements.txt
 
 Usage:
-  python backend/scripts/list_tags.py
-  python backend/scripts/list_tags.py --json
+  python services/ingest/scripts/list_tags.py
+  python services/ingest/scripts/list_tags.py --json
 """
 
 from __future__ import annotations
@@ -31,8 +31,8 @@ def main() -> int:
     except ModuleNotFoundError as exc:
         need = exc.name or "dependency"
         print(
-            f'Missing Python module "{need}". Install backend dependencies first:\n'
-            "  python3 -m pip install -r backend/requirements.txt\n"
+            f'Missing Python module "{need}". Install ingest dependencies first:\n'
+            "  python3 -m pip install -r services/ingest/requirements.txt\n"
             "(from the repository root; use the same venv you use for ingest if any.)\n"
             'If python3 -m pip fails with "No module named pip", install pip, e.g.\n'
             "  sudo pacman -S python-pip    # CachyOS / Arch\n"
