@@ -1,9 +1,14 @@
 import Navbar from "@/components/Navbar";
+import TopicsList from "@/components/TopicsList";
+import TopicsListSkeleton from "@/components/TopicsListSkeleton";
 import TransitionLink from "@/components/TransitionLink";
-import { getTagsWithPostCounts } from "@/lib/posts";
+import { getPaginatedTags } from "@/lib/posts";
 import type { Metadata } from "next";
+import { Suspense } from "react";
 
 export const revalidate = 120;
+
+const PAGE_SIZE = 50;
 
 export const metadata: Metadata = {
   title: "Topics",
@@ -12,8 +17,6 @@ export const metadata: Metadata = {
 };
 
 export default async function TopicsPage() {
-  const tagRows = await getTagsWithPostCounts();
-
   return (
     <div className="min-h-screen w-full bg-[#131316] text-white">
       <Navbar />
@@ -35,30 +38,9 @@ export default async function TopicsPage() {
             </p>
           </header>
 
-          {tagRows.length === 0 ? (
-            <p className="text-[#6A6B70] text-sm">
-              No tags yet. Run the ingest pipeline to publish posts with tags.
-            </p>
-          ) : (
-            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {tagRows.map(({ tag, count }) => (
-                <li key={String(tag.id)}>
-                  <TransitionLink
-                    href={`/?tag=${encodeURIComponent(tag.slug)}`}
-                    className="flex items-center justify-between gap-4 p-4 rounded-xl border-2 border-[#393A41] border-dashed
-                      hover:border-red-400/70 hover:bg-[#1a1a1f] transition-colors group"
-                  >
-                    <span className="font-semibold text-white group-hover:text-red-300">
-                      {tag.name}
-                    </span>
-                    <span className="text-sm tabular-nums text-[#6A6B70] group-hover:text-[#9A9BA2]">
-                      {count} post{count === 1 ? "" : "s"}
-                    </span>
-                  </TransitionLink>
-                </li>
-              ))}
-            </ul>
-          )}
+          <Suspense fallback={<TopicsListSkeleton count={PAGE_SIZE} />}>
+            <TopicsListSection />
+          </Suspense>
 
           <p className="mt-12 text-center">
             <TransitionLink
@@ -71,5 +53,13 @@ export default async function TopicsPage() {
         </main>
       </div>
     </div>
+  );
+}
+
+async function TopicsListSection() {
+  const { tags, hasMore } = await getPaginatedTags(0, PAGE_SIZE);
+
+  return (
+    <TopicsList initialTags={tags} initialHasMore={hasMore} pageSize={PAGE_SIZE} />
   );
 }

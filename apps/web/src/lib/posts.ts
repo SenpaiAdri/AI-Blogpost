@@ -186,3 +186,61 @@ export async function getPaginatedPosts(
         hasMore: rows.length > safeLimit,
     };
 }
+
+export async function getPaginatedTags(
+    offset: number,
+    limit: number
+): Promise<{ tags: TagWithCount[]; hasMore: boolean }> {
+    const safeOffset = Math.max(0, offset || 0);
+    const safeLimit = Math.min(Math.max(1, limit || 10), 50);
+
+    const { data: tagData, error } = await supabase
+        .from("tags")
+        .select("id, name, slug")
+        .order("name");
+
+    if (error || !tagData) {
+        console.error("Error fetching tags:", error);
+        return { tags: [], hasMore: false };
+    }
+
+    const tags = tagData as unknown as Tag[];
+
+    const tagIds = tags.map((t) => t.id);
+    if (tagIds.length === 0) {
+        return { tags: [], hasMore: false };
+    }
+
+    const { data: linkData, error: linkErr } = await supabase
+        .from("post_tags")
+        .select("tag_id, posts!inner(id)")
+        .in("tag_id", tagIds)
+        .eq("posts.is_published", true);
+
+    if (linkErr) {
+        console.error("Error fetching tag counts:", linkErr);
+        return { tags: [], hasMore: false };
+    }
+
+    const countMap = new Map<string, number>();
+    for (const link of linkData || []) {
+        const tagId = String(link.tag_id);
+        countMap.set(tagId, (countMap.get(tagId) || 0) + 1);
+    }
+
+    const tagsWithCounts: TagWithCount[] = tags
+        .map((tag) => ({
+            tag,
+            count: countMap.get(String(tag.id)) || 0,
+        }))
+        .filter((t) => t.count > 0)
+        .sort((a, b) => b.count - a.count || a.tag.name.localeCompare(b.tag.name));
+
+    const paginated = tagsWithCounts.slice(safeOffset, safeOffset + safeLimit + 1);
+    const hasMore = paginated.length > safeLimit;
+
+    return {
+        tags: paginated.slice(0, safeLimit),
+        hasMore,
+    };
+}
