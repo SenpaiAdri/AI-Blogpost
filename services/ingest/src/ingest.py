@@ -49,7 +49,7 @@ TECH_KEYWORDS = [
     # Security / IT operations
     "security", "cybersecurity", "ransomware", "vulnerability", "breach", "malware",
     "patch", "encryption", "privacy", "phishing", "zero-day", "zeroday",
-    "deepfake", "supply chain attack", "post-quantum", "pqc", "identity",
+    "deepfake", "supply chain attack", "pqc", "identity",
     "infostealer", "data breach", "threat", "exploit", "cve",
     # Cloud / infrastructure / DevOps
     "cloud", "kubernetes", "docker", "devops", "aws", "azure", "gcp",

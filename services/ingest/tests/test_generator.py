@@ -177,6 +177,52 @@ class NormalizationTelemetryTests(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(generator._NORMALIZATION_FALLBACK_COUNTS, {})
 
+    def test_excerpt_is_not_cut_mid_sentence(self):
+        raw = {
+            "title": "Cloud Control Plane Update",
+            "slug": "cloud-control-plane-update",
+            "tldr": ["A", "B", "C"],
+            "content": "## What Happened\n\nA cloud control plane update shipped today.",
+            "excerpt": (
+                "A cloud control plane update shipped today with changes for operators "
+                "who manage production infrastructure across multiple regions and need"
+            ),
+            "tags": ["Cloud", "DevOps"],
+        }
+        result = generator.finalize_result(
+            raw,
+            model_name="test-model",
+            topic="Ignored topic",
+            source_name="Example News",
+            source_url="https://example.com/story",
+        )
+
+        self.assertIsNotNone(result)
+        self.assertTrue(result["excerpt"].endswith("."))
+        self.assertNotIn(" and need.", result["excerpt"])
+
+    def test_generic_only_tags_are_replaced_with_specific_tags(self):
+        raw = {
+            "title": "Go WebAssembly RDP Client Lands on GitHub",
+            "slug": "go-webassembly-rdp-client",
+            "tldr": ["A", "B", "C"],
+            "content": "## What Happened\n\nA developer released an open source RDP client built with Go and WebAssembly.",
+            "excerpt": "A Go and WebAssembly RDP client shows how browser-based developer tools are evolving.",
+            "tags": ["Tech News"],
+        }
+        result = generator.finalize_result(
+            raw,
+            model_name="test-model",
+            topic="Go WebAssembly RDP Client Lands on GitHub",
+            source_name="GitHub",
+            source_url="https://example.com/story",
+        )
+
+        self.assertIsNotNone(result)
+        self.assertNotEqual(result["tags"], ["Tech News"])
+        self.assertNotIn("Tech News", result["tags"])
+        self.assertGreaterEqual(len(result["tags"]), 1)
+
     def test_metrics_summary_includes_normalization_section(self):
         generator._NORMALIZATION_FALLBACK_COUNTS["tags_defaulted"] = 2
         generator._NORMALIZATION_FALLBACK_BY_MODEL["test-model"] = {"tags_defaulted": 2}

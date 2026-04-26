@@ -54,6 +54,10 @@ Your task is to write a high-quality, engaging article for developers and IT rea
 
 Scope: Cover the full technology landscape when the source material supports it — including AI/ML, security, cloud and infrastructure, developer tools, platforms (e.g. browsers, mobile, web), hardware/chips, and enterprise/SaaS — not only artificial intelligence.
 
+Audience fit:
+- Focus on the technology angle. If the story is mainly politics, crime, culture, or general business, cover only the concrete technology relevance and avoid stretching it into developer analysis.
+- Do not imply a story matters to developers or IT teams unless the source material supports that connection.
+
 Output Format: JSON only
 The output must be a valid JSON object with the following schema:
 {
@@ -75,8 +79,10 @@ Quality and accuracy:
 - Ground claims in the provided source material; do not invent quotes, statistics, or product details.
 - If the source is thin or unclear, say what is confirmed vs uncertain and what readers should watch for next.
 - Prefer concrete implications for engineers, operators, or decision-makers over generic hype.
+- If the source material is thin, keep the post concise (roughly 400-700 words) instead of padding with speculation.
 
 Perspective & Analysis:
+- Use this structure in content when possible: a brief opening paragraph, `## What Happened`, `## Why It Matters`, and `## What To Watch`.
 - After summarizing WHAT happened, include a "Why It Matters" section that explains the implications
 - Give readers your take on WHY this matters — not as opinion, but as analysis grounded in the facts presented
 - Consider: What does this mean for developers? For enterprises? For the industry?
@@ -84,7 +90,10 @@ Perspective & Analysis:
 - NEVER invent a perspective — if the source doesn't give enough context to analyze, focus on the facts and say what readers should watch for
 - Keep analysis grounded in evidence from the source material
 
-- Use tags that reflect the real topic (e.g. Security, Cloud, AI, DevOps, Hardware) — not every post needs an "AI" tag.
+Tags:
+- Use 3-5 specific tags that reflect the real topic.
+- Prefer this taxonomy when it fits: AI, Security, Cloud, DevOps, Developer Tools, Hardware, Policy, Data Centers, Quantum, Robotics, Open Source, Platforms, Enterprise.
+- Do not return only "Tech News"; use "Tech News" only alongside more specific tags if absolutely necessary.
 
 Guidelines:
 - Content should be in Markdown format with proper headings (## Heading)
@@ -97,7 +106,8 @@ Guidelines:
 - No introductory text, just the JSON object
 - Make the content informative and useful for developers
 - Use exactly 3 TLDR bullets, each concise (max ~140 chars)
-- Target content length: ~700-1200 words, unless source material is too thin
+- Excerpt must be one complete sentence, max 180 characters, with no trailing ellipsis unless the source itself contains one.
+- Target content length: ~700-1200 words when source material is rich; ~400-700 words when source material is thin.
 
 Images (copyright and hotlinking):
 - Do NOT invent, guess, or reconstruct image URLs. Only use `![description](url)` if that exact image URL appears in the Source Material.
@@ -657,6 +667,13 @@ Source Material:
 Source: {source_name}
 Link: {source_url}
 
+Editorial rules:
+- Lead with the technology relevance, not generic news framing.
+- Use this content structure when possible: opening paragraph, ## What Happened, ## Why It Matters, ## What To Watch.
+- If this is only weakly technology-related, keep the article concise and state the limited tech relevance.
+- Write one complete-sentence excerpt under 180 characters.
+- Return 3-5 specific tags from the topic area; never return only "Tech News".
+
 Image policy: Only embed `![alt](url)` if that exact URL appears in Source Material. Otherwise describe the image and point readers to the link above. When you embed, add a one-line credit under the image pointing to the article URL.
 
 Close every ``` code fence before body text after the code.
@@ -674,6 +691,89 @@ def _coerce_list_of_strings(value: Any) -> List[str]:
     if isinstance(value, str) and value.strip():
         return [value.strip()]
     return []
+
+
+_TAG_DISPLAY_NAMES = {
+    "security": "Security",
+    "cloud": "Cloud",
+    "devops": "DevOps",
+    "llm": "AI",
+    "gpu": "Hardware",
+    "ml": "AI",
+    "robotics": "Robotics",
+    "agent": "AI Agents",
+    "research": "Research",
+    "startup": "Startups",
+    "hardware": "Hardware",
+    "quantum": "Quantum",
+}
+
+_GENERIC_TAGS = {"tech news", "technology", "news", "breaking"}
+
+
+def _fallback_tags(title: str, content: str, source_name: str = "") -> List[str]:
+    """Derive specific fallback tags from known keyword/category mappings."""
+    haystack = f"{title} {content[:1500]} {source_name}".lower()
+    tags: List[str] = []
+    for keyword, category in KEYWORD_MAP.items():
+        if keyword in haystack:
+            label = _TAG_DISPLAY_NAMES.get(category, category.title())
+            if label not in tags:
+                tags.append(label)
+        if len(tags) >= 5:
+            break
+
+    if not tags:
+        tags = ["Developer Tools"] if any(
+            token in haystack for token in ("developer", "github", "open source", "programming")
+        ) else ["Technology"]
+    return tags[:5]
+
+
+def _normalize_tags(tags: List[str], title: str, content: str, source_name: str) -> List[str]:
+    """Keep tags specific enough for topic filtering and avoid single generic tags."""
+    cleaned: List[str] = []
+    for tag in tags:
+        safe = re.sub(r"\s+", " ", html.unescape(str(tag))).strip()
+        if not safe:
+            continue
+        if safe.lower() in _GENERIC_TAGS:
+            continue
+        if safe not in cleaned:
+            cleaned.append(safe[:30])
+
+    fallback = _fallback_tags(title, content, source_name)
+    for tag in fallback:
+        if tag not in cleaned:
+            cleaned.append(tag)
+
+    return cleaned[:5]
+
+
+def _plain_text_from_markdown(content: str) -> str:
+    """Produce readable text for excerpt fallback without markdown syntax."""
+    text = re.sub(r"```.*?```", " ", content, flags=re.DOTALL)
+    text = re.sub(r"!\[[^\]]*\]\([^)]+\)", " ", text)
+    text = re.sub(r"\[([^\]]+)\]\([^)]+\)", r"\1", text)
+    text = re.sub(r"^#{1,6}\s+", "", text, flags=re.MULTILINE)
+    text = re.sub(r"[*_`>|-]+", " ", text)
+    return re.sub(r"\s+", " ", html.unescape(text)).strip()
+
+
+def _complete_sentence_excerpt(text: str, max_chars: int = 180) -> str:
+    """Return a complete sentence without cutting off mid-thought."""
+    cleaned = _plain_text_from_markdown(text)
+    if not cleaned:
+        return ""
+    sentence_match = re.search(r"(.{40,}?[.!?])(?:\s|$)", cleaned)
+    if sentence_match and len(sentence_match.group(1)) <= max_chars:
+        return sentence_match.group(1).strip()
+
+    snippet = cleaned[:max_chars].rstrip()
+    boundary = max(snippet.rfind(", "), snippet.rfind("; "), snippet.rfind(": "), snippet.rfind(" "))
+    if boundary >= 80:
+        snippet = snippet[:boundary].rstrip()
+    return snippet.rstrip(".!?;:,") + "."
 
 
 def _record_normalization_fallbacks(
@@ -771,20 +871,26 @@ def validate_and_normalize_result(
         tldr = [f"Update: {title}", f"Source: {source_name or 'Tech news'}"]
     tldr = tldr[:5]
 
-    tags = _coerce_list_of_strings(result.get("tags", []))
-    if not tags:
+    raw_tags = _coerce_list_of_strings(result.get("tags", []))
+    tags = _normalize_tags(raw_tags, title, content, source_name)
+    if not raw_tags or raw_tags == ["Tech News"]:
         fallback_log.append("tags_defaulted")
-        tags = ["Tech News"]
-    tags = tags[:8]
+    tags = tags[:5]
     if not excerpt:
         fallback_log.append("excerpt_defaulted")
+
+    excerpt_text = _complete_sentence_excerpt(excerpt, 180)
+    if not excerpt_text:
+        excerpt_text = _complete_sentence_excerpt(content, 180)
+    if not excerpt_text:
+        excerpt_text = f"Technology update from {source_name or 'the source'}."
 
     normalized: Dict[str, Any] = {
         "title": title,
         "slug": slug,
         "tldr": tldr,
         "content": sanitize_ai_content(title, content, source_name, source_url),
-        "excerpt": excerpt[:200] if excerpt else f"Latest update on {title}.",
+        "excerpt": excerpt_text,
         "tags": tags,
         "source_url": [{"name": source_name, "url": source_url}],
     }
