@@ -19,7 +19,9 @@ from scraper import scrape_article
 from generator import generate_blog_post
 from ai_audit import log_ai_generation_result
 from logger import get_logger
-from security import sanitize_text, validate_url, validate_ai_output, MAX_TITLE_LENGTH
+from security import sanitize_text, validate_url, MAX_TITLE_LENGTH
+from models import PostInsertModel
+from pydantic import ValidationError
 from metrics import cost_tracker
 
 logger = get_logger("ingest")
@@ -132,18 +134,10 @@ def save_post(client, post_data: dict) -> bool:
                     if existing.data:
                         tag_ids.append(existing.data[0]["id"])
         
-        post_response = client.from_("posts").insert({
-            "title": post_data["title"],
-            "slug": post_data["slug"],
-            "content": post_data.get("content", ""),
-            "excerpt": post_data.get("excerpt", ""),
-            "tldr": post_data.get("tldr", []),
-            "source_url": post_data.get("source_url", []),
-            "ai_model": post_data.get("ai_model", "gemini-2.5-pro"),
-            "is_published": True,
-            "published_at": datetime.now().isoformat(),
-            "cover_image": post_data.get("cover_image", "https://images.unsplash.com/photo-1677442136019-21780ecad995")
-        }).execute()
+        post_data_clean = post_data.copy()
+        post_data_clean.pop("tags", None)
+        
+        post_response = client.from_("posts").insert(post_data_clean).execute()
         
         if not post_response.data:
             logger.error("Failed to insert post")
@@ -230,8 +224,11 @@ def process_news_item(
                 )
                 return False
             
-            validation_error = validate_ai_output(post_data)
-            if validation_error:
+            try:
+                validated_post = PostInsertModel(**post_data)
+                post_data = validated_post.model_dump(mode='json')
+            except ValidationError as e:
+                validation_error = str(e).replace('\n', ' | ')
                 logger.error(f"    AI output validation failed: {validation_error}")
                 if attempt < max_retries - 1:
                     time.sleep(3)
@@ -340,8 +337,11 @@ def process_news_item_for_batch(
                 )
                 return None
             
-            validation_error = validate_ai_output(post_data)
-            if validation_error:
+            try:
+                validated_post = PostInsertModel(**post_data)
+                post_data = validated_post.model_dump(mode='json')
+            except ValidationError as e:
+                validation_error = str(e).replace('\n', ' | ')
                 logger.error(f"    AI output validation failed: {validation_error}")
                 if attempt < max_retries - 1:
                     time.sleep(3)
@@ -425,18 +425,8 @@ def batch_save_posts(client, posts_data: List[Dict]) -> bool:
                     if slug in tag_map:
                         post_tags.append(tag_map[slug])
             
-            post_data_clean = {
-                "title": post_data["title"],
-                "slug": post_data["slug"],
-                "content": post_data.get("content", ""),
-                "excerpt": post_data.get("excerpt", ""),
-                "tldr": post_data.get("tldr", []),
-                "source_url": post_data.get("source_url", []),
-                "ai_model": post_data.get("ai_model", "gemini-2.5-flash"),
-                "is_published": True,
-                "published_at": datetime.now().isoformat(),
-                "cover_image": post_data.get("cover_image", "https://images.unsplash.com/photo-1677442136019-21780ecad995")
-            }
+            post_data_clean = post_data.copy()
+            post_data_clean.pop("tags", None)
             posts_to_insert.append(post_data_clean)
             post_tags_list.append(post_tags)
         

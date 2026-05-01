@@ -21,6 +21,6 @@ Python worker that fetches RSS feeds, scrapes articles, uses LLMs to generate bl
 - Install dependencies: `python -m pip install -r requirements.txt`
 
 ## Important Constraints & Rules
-- **AI Output Validation:** AI outputs must always be validated (e.g., using `security.validate_ai_output`) before saving to the database.
+- **AI Output Validation:** AI outputs must always be validated (using `models.PostInsertModel`) before saving to the database to ensure correct typing, structure, and SSRF protection via Pydantic.
 - **Deduplication:** New URLs must be checked against existing records (using `database.get_all_existing_urls` or `database.check_duplicate_url`) before processing to prevent double-posting.
 - **Integration Boundary:** Do not add code that attempts to communicate directly with the Next.js web application. Supabase acts as the sole integration boundary.
