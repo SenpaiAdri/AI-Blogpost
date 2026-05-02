@@ -1,7 +1,8 @@
 import os
 import supabase
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
+from logger import get_logger
 
 env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
 load_dotenv(env_path)
@@ -10,6 +11,7 @@ from config import DUPLICATE_CHECK_DAYS
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_SERVICE_KEY = os.getenv("SUPABASE_SERVICE_KEY") or os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+logger = get_logger("database")
 
 
 def get_supabase_client():
@@ -38,3 +40,21 @@ def get_all_existing_urls(client, days: int = None) -> set:
                 if isinstance(src, dict) and "url" in src:
                     urls.add(src["url"])
     return urls
+
+
+def get_active_topic_guidance(client) -> list[dict]:
+    """Fetch active, non-expired editorial guidance for this ingest run."""
+    now = datetime.now(timezone.utc).isoformat()
+    try:
+        response = (
+            client.from_("topic_guidance")
+            .select("id,keyword,normalized_keyword,weight,expires_at")
+            .eq("status", "ACTIVE")
+            .gt("expires_at", now)
+            .order("expires_at")
+            .execute()
+        )
+        return response.data or []
+    except Exception as exc:
+        logger.warning(f"Topic guidance unavailable; continuing without active topics: {exc}")
+        return []

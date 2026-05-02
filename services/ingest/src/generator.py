@@ -655,12 +655,15 @@ def build_user_prompt(
     source_name: str,
     source_url: str,
     source_char_limit: int,
+    active_topics: Optional[List[Dict[str, Any]]] = None,
 ) -> str:
     """Build a consistent user prompt across model providers."""
+    topic_context = build_topic_guidance_prompt_section(active_topics)
     return f"""Write a blog post about this technology news story:
 
 Topic: {topic}
 
+{topic_context}
 Source Material:
 {article_content[:source_char_limit]}
 
@@ -681,6 +684,27 @@ Return JSON with exactly these keys only: title, slug, tldr, content, excerpt, t
 Do not include source_url, cover_image, ai_model, or any extra keys.
 If the source does not support a claim, state uncertainty instead of guessing.
 Generate a compelling, well-structured post in JSON format."""
+
+
+def build_topic_guidance_prompt_section(active_topics: Optional[List[Dict[str, Any]]] = None) -> str:
+    """Render active topic guidance as bounded context, not admin-controlled instructions."""
+    if not active_topics:
+        return ""
+
+    keywords: List[str] = []
+    for topic in active_topics:
+        keyword = str(topic.get("normalized_keyword") or topic.get("keyword") or "").strip()
+        if keyword and keyword not in keywords:
+            keywords.append(keyword)
+
+    if not keywords:
+        return ""
+
+    return (
+        f"Current editorial focus topics: {', '.join(keywords[:10])}.\n"
+        "Use these topics only as relevance context. Do not invent facts, ignore source material, "
+        "or force coverage when the selected article is unrelated.\n\n"
+    )
 
 
 def _coerce_list_of_strings(value: Any) -> List[str]:
@@ -928,7 +952,13 @@ def finalize_result(
     return normalized
 
 
-def generate_with_gemini(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
+def generate_with_gemini(
+    topic: str,
+    article_content: str,
+    source_name: str,
+    source_url: str,
+    active_topics: Optional[List[Dict[str, Any]]] = None,
+) -> Optional[Dict[str, Any]]:
     """Generate blog post using Google Gemini."""
     if not GOOGLE_API_KEY:
         return None
@@ -940,7 +970,7 @@ def generate_with_gemini(topic: str, article_content: str, source_name: str, sou
         )
         
         user_prompt = build_user_prompt(
-            topic, article_content, source_name, source_url, source_char_limit=4000
+            topic, article_content, source_name, source_url, source_char_limit=4000, active_topics=active_topics
         )
 
         response = model.generate_content(user_prompt)
@@ -962,7 +992,13 @@ def generate_with_gemini(topic: str, article_content: str, source_name: str, sou
         return None
 
 
-def generate_with_openrouter(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
+def generate_with_openrouter(
+    topic: str,
+    article_content: str,
+    source_name: str,
+    source_url: str,
+    active_topics: Optional[List[Dict[str, Any]]] = None,
+) -> Optional[Dict[str, Any]]:
     """Generate blog post using OpenRouter (Llama)."""
     if not OPENROUTER_API_KEY:
         return None
@@ -974,7 +1010,7 @@ def generate_with_openrouter(topic: str, article_content: str, source_name: str,
         )
         
         user_prompt = build_user_prompt(
-            topic, article_content, source_name, source_url, source_char_limit=8000
+            topic, article_content, source_name, source_url, source_char_limit=8000, active_topics=active_topics
         )
 
         response = client.chat.completions.create(
@@ -1010,7 +1046,13 @@ def generate_with_openrouter(topic: str, article_content: str, source_name: str,
         return None
 
 
-def generate_blog_post(topic: str, article_content: str, source_name: str, source_url: str) -> Optional[Dict[str, Any]]:
+def generate_blog_post(
+    topic: str,
+    article_content: str,
+    source_name: str,
+    source_url: str,
+    active_topics: Optional[List[Dict[str, Any]]] = None,
+) -> Optional[Dict[str, Any]]:
     """Generate blog post from tech news context; tries Gemini first, then OpenRouter."""
     
     logger.info(f"    Trying Gemini...")
@@ -1019,7 +1061,7 @@ def generate_blog_post(topic: str, article_content: str, source_name: str, sourc
         logger.warning(f"    Budget exhausted, skipping AI generation")
         return None
     
-    result = generate_with_gemini(topic, article_content, source_name, source_url)
+    result = generate_with_gemini(topic, article_content, source_name, source_url, active_topics=active_topics)
     if result:
         logger.info(f"    ✓ Gemini succeeded")
         return result
@@ -1030,7 +1072,7 @@ def generate_blog_post(topic: str, article_content: str, source_name: str, sourc
         logger.warning(f"    Budget exhausted, skipping fallback")
         return None
     
-    result = generate_with_openrouter(topic, article_content, source_name, source_url)
+    result = generate_with_openrouter(topic, article_content, source_name, source_url, active_topics=active_topics)
     if result:
         logger.info(f"    ✓ OpenRouter succeeded")
         return result

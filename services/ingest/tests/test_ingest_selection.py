@@ -7,7 +7,14 @@ backend_src = Path(__file__).resolve().parents[1] / "src"
 if str(backend_src) not in sys.path:
     sys.path.insert(0, str(backend_src))
 
-from ingest import NewsItem, diversify_news_items, parse_entry_datetime
+from ingest import (
+    NewsItem,
+    diversify_news_items,
+    matched_topic_ids,
+    normalize_topic_keyword,
+    parse_entry_datetime,
+    prioritize_news_items_by_topics,
+)
 
 
 class IngestSelectionTests(unittest.TestCase):
@@ -48,6 +55,40 @@ class IngestSelectionTests(unittest.TestCase):
         self.assertEqual(sources.count("Hacker News Best"), 2)
         self.assertIn("The Verge", sources)
         self.assertIn("TechCrunch", sources)
+
+    def test_normalize_topic_keyword_collapses_case_and_spacing(self):
+        self.assertEqual(normalize_topic_keyword("  DeepSeek   Security  "), "deepseek security")
+
+    def test_prioritize_news_items_by_topics_stably_boosts_matches(self):
+        items = [
+            NewsItem("Generic cloud update", "https://example.com/1", "infra", "A", datetime(2026, 4, 14, 12, 3, 0)),
+            NewsItem("DeepSeek releases model", "https://example.com/2", "ai", "B", datetime(2026, 4, 14, 12, 2, 0)),
+            NewsItem("Another DeepSeek story", "https://example.com/3", "ai", "C", datetime(2026, 4, 14, 12, 1, 0)),
+        ]
+        topics = [{"id": "topic-1", "keyword": "DeepSeek", "normalized_keyword": "deepseek", "weight": 3}]
+
+        prioritized = prioritize_news_items_by_topics(items, topics)
+
+        self.assertEqual([item.link for item in prioritized], [
+            "https://example.com/2",
+            "https://example.com/3",
+            "https://example.com/1",
+        ])
+
+    def test_matched_topic_ids_returns_only_matching_topics(self):
+        item = NewsItem(
+            "OpenAI ships security update",
+            "https://example.com/security",
+            "The vulnerability affects AI tooling.",
+            "Example",
+            datetime(2026, 4, 14, 12, 0, 0),
+        )
+        topics = [
+            {"id": "security", "keyword": "security", "normalized_keyword": "security", "weight": 1},
+            {"id": "robotics", "keyword": "robotics", "normalized_keyword": "robotics", "weight": 1},
+        ]
+
+        self.assertEqual(matched_topic_ids(item, topics), ["security"])
 
 
 if __name__ == "__main__":

@@ -13,8 +13,8 @@ load_dotenv(env_path)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from database import get_supabase_client, get_all_existing_urls
-from ingest import get_latest_news, NewsItem
+from database import get_supabase_client, get_all_existing_urls, get_active_topic_guidance
+from ingest import get_latest_news, matched_topic_ids, NewsItem
 from scraper import scrape_article
 from generator import generate_blog_post
 from ai_audit import log_ai_generation_result
@@ -176,6 +176,7 @@ def process_news_item(
     existing_urls: set,
     max_retries: int = 2,
     run_stats: Optional[Dict[str, int]] = None,
+    active_topics: Optional[List[Dict]] = None,
 ) -> bool:
     """Process a single news item: check duplicate, scrape, generate, save."""
     if not validate_url(item.link):
@@ -193,6 +194,9 @@ def process_news_item(
     for attempt in range(max_retries):
         try:
             display_source_name = resolve_display_source_name(item.source, item.link)
+            matched_topics = matched_topic_ids(item, active_topics)
+            if matched_topics:
+                logger.info(f"    Matched topic guidance: {', '.join(matched_topics)}")
             logger.debug(f"    Scraping article content...")
             article_content = scrape_article(item.link)
             
@@ -203,7 +207,8 @@ def process_news_item(
                 topic=item.title,
                 article_content=context,
                 source_name=display_source_name,
-                source_url=item.link
+                source_url=item.link,
+                active_topics=active_topics,
             )
             
             if not post_data:
@@ -289,6 +294,7 @@ def process_news_item_for_batch(
     existing_urls: set,
     max_retries: int = 2,
     run_stats: Optional[Dict[str, int]] = None,
+    active_topics: Optional[List[Dict]] = None,
 ) -> Optional[Dict]:
     """Process a single news item and return post data for batch saving."""
     if not validate_url(item.link):
@@ -306,6 +312,9 @@ def process_news_item_for_batch(
     for attempt in range(max_retries):
         try:
             display_source_name = resolve_display_source_name(item.source, item.link)
+            matched_topics = matched_topic_ids(item, active_topics)
+            if matched_topics:
+                logger.info(f"    Matched topic guidance: {', '.join(matched_topics)}")
             logger.debug(f"    Scraping article content...")
             article_content = scrape_article(item.link)
             
@@ -316,7 +325,8 @@ def process_news_item_for_batch(
                 topic=item.title,
                 article_content=context,
                 source_name=display_source_name,
-                source_url=item.link
+                source_url=item.link,
+                active_topics=active_topics,
             )
             
             if not post_data:
@@ -471,8 +481,15 @@ def main():
     client = get_supabase_client()
     logger.info("    Connected")
     
+    active_topics = get_active_topic_guidance(client)
+    active_topic_ids = [str(topic.get("id")) for topic in active_topics if topic.get("id")]
+    if active_topics:
+        logger.info(f"    Active topic guidance: {len(active_topics)} topic(s)")
+    else:
+        logger.info("    Active topic guidance: none")
+    
     logger.info("[2/4] Fetching latest tech news...")
-    news_items = get_latest_news(limit=5)
+    news_items = get_latest_news(limit=5, active_topics=active_topics)
     logger.info(f"    Found {len(news_items)} candidate items")
     
     if not news_items:
@@ -485,6 +502,7 @@ def main():
                     "started_at": started_at,
                     "finished_at": datetime.now().isoformat(),
                     "candidates": 0,
+                    "active_topic_ids": active_topic_ids,
                     "new_posts_saved": 0,
                     "note": "no_feed_matches",
                 }
@@ -511,7 +529,7 @@ def main():
             
         try:
             post_data = process_news_item_for_batch(
-                client, item, existing_urls, run_stats=run_stats
+                client, item, existing_urls, run_stats=run_stats, active_topics=active_topics
             )
             if post_data:
                 pending_posts.append(post_data)
@@ -539,6 +557,7 @@ def main():
         "started_at": started_at,
         "finished_at": finished_at,
         "candidates": len(news_items),
+        "active_topic_ids": active_topic_ids,
         "selected_by_source": _source_distribution(news_items),
         "new_posts_saved": success_count,
         "budget_stopped_early": budget_stopped_early,

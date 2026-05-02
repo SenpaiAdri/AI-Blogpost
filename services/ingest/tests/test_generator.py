@@ -342,5 +342,30 @@ class InlineImageValidationTests(unittest.TestCase):
             generator._INLINE_IMAGE_ALLOWED_DOMAINS.update(original_allow)
 
 
+class TopicGuidancePromptTests(unittest.TestCase):
+    def test_build_topic_guidance_prompt_section_is_bounded_context(self):
+        section = generator.build_topic_guidance_prompt_section([
+            {"keyword": "DeepSeek", "normalized_keyword": "deepseek", "weight": 3},
+            {"keyword": "AI Security", "normalized_keyword": "ai security", "weight": 2},
+        ])
+
+        self.assertIn("Current editorial focus topics: deepseek, ai security.", section)
+        self.assertIn("Use these topics only as relevance context", section)
+        self.assertIn("Do not invent facts", section)
+
+    def test_build_user_prompt_includes_topic_guidance_when_present(self):
+        prompt = generator.build_user_prompt(
+            topic="DeepSeek security report",
+            article_content="Source confirms a security update.",
+            source_name="Example",
+            source_url="https://example.com/story",
+            source_char_limit=4000,
+            active_topics=[{"keyword": "DeepSeek", "normalized_keyword": "deepseek", "weight": 3}],
+        )
+
+        self.assertIn("Current editorial focus topics: deepseek.", prompt)
+        self.assertIn("Source Material:", prompt)
+
+
 if __name__ == "__main__":
     unittest.main()

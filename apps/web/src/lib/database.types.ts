@@ -145,6 +145,85 @@ export interface Database {
         }
         Relationships: []
       }
+      post_moderation_events: {
+        Row: {
+          id: string
+          post_id: string
+          action: string
+          reason: string | null
+          previous_is_published: boolean
+          new_is_published: boolean
+          created_by: string
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          post_id: string
+          action: string
+          reason?: string | null
+          previous_is_published: boolean
+          new_is_published: boolean
+          created_by: string
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          post_id?: string
+          action?: string
+          reason?: string | null
+          previous_is_published?: boolean
+          new_is_published?: boolean
+          created_by?: string
+          created_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_moderation_events_post_id_fkey"
+            columns: ["post_id"]
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      topic_guidance: {
+        Row: {
+          id: string
+          keyword: string
+          normalized_keyword: string
+          weight: number
+          status: string
+          expires_at: string
+          created_by: string
+          created_at: string
+          deactivated_by: string | null
+          deactivated_at: string | null
+        }
+        Insert: {
+          id?: string
+          keyword: string
+          normalized_keyword: string
+          weight?: number
+          status?: string
+          expires_at: string
+          created_by: string
+          created_at?: string
+          deactivated_by?: string | null
+          deactivated_at?: string | null
+        }
+        Update: {
+          id?: string
+          keyword?: string
+          normalized_keyword?: string
+          weight?: number
+          status?: string
+          expires_at?: string
+          created_by?: string
+          created_at?: string
+          deactivated_by?: string | null
+          deactivated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
