@@ -1,6 +1,7 @@
 import Navbar from "@/components/Navbar";
 import Tags from "@/components/Tags";
 import BlogContent from "@/components/BlogContent";
+import ShareButton from "@/components/ShareButton";
 import { getPostBySlug, getAllPostSlugs } from "@/lib/posts";
 import { formatDate, formatSource } from "@/lib/utils";
 import { notFound } from "next/navigation";
@@ -59,9 +60,12 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 
               <div className="flex flex-wrap gap-4 items-center justify-between">
                 <Tags tags={post.tags || []} linkable />
-                <span className="text-gray-400 text-sm">
-                  {formatDate(post.published_at)}
-                </span>
+                <div className="flex items-center gap-4">
+                  <span className="text-gray-400 text-sm">
+                    {formatDate(post.published_at)}
+                  </span>
+                  <ShareButton slug={slug} />
+                </div>
               </div>
             </header>
 
