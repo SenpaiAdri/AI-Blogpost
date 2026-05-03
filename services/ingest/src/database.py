@@ -58,3 +58,16 @@ def get_active_topic_guidance(client) -> list[dict]:
     except Exception as exc:
         logger.warning(f"Topic guidance unavailable; continuing without active topics: {exc}")
         return []
+def get_active_rss_sources(client) -> list[dict]:
+    """Fetch active RSS sources from the database."""
+    try:
+        response = (
+            client.from_("rss_sources")
+            .select("name,url")
+            .eq("is_active", True)
+            .execute()
+        )
+        return response.data or []
+    except Exception as exc:
+        logger.warning(f"RSS sources unavailable; continuing with hardcoded feeds: {exc}")
+        return []

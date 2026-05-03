@@ -13,7 +13,7 @@ load_dotenv(env_path)
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from database import get_supabase_client, get_all_existing_urls, get_active_topic_guidance
+from database import get_supabase_client, get_all_existing_urls, get_active_topic_guidance, get_active_rss_sources
 from ingest import get_latest_news, matched_topic_ids, NewsItem
 from scraper import scrape_article
 from generator import generate_blog_post
@@ -487,9 +487,15 @@ def main():
         logger.info(f"    Active topic guidance: {len(active_topics)} topic(s)")
     else:
         logger.info("    Active topic guidance: none")
-    
+
+    active_rss_sources = get_active_rss_sources(client)
+    if active_rss_sources:
+        logger.info(f"    Active RSS sources: {len(active_rss_sources)} feed(s) from DB")
+    else:
+        logger.info("    Active RSS sources: using hardcoded defaults")
+
     logger.info("[2/4] Fetching latest tech news...")
-    news_items = get_latest_news(limit=5, active_topics=active_topics)
+    news_items = get_latest_news(limit=5, active_topics=active_topics, rss_feeds=active_rss_sources)
     logger.info(f"    Found {len(news_items)} candidate items")
     
     if not news_items:

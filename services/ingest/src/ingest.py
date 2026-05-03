@@ -304,15 +304,16 @@ def fetch_feed(feed_config: dict) -> List[NewsItem]:
         return []
 
 
-def fetch_all_news() -> List[NewsItem]:
+def fetch_all_news(rss_feeds: Optional[List[Dict]] = None) -> List[NewsItem]:
     """Fetch all RSS feeds in parallel and return combined, sorted news."""
+    feeds_to_fetch = rss_feeds if rss_feeds else RSS_FEEDS
     all_news = []
     failed_feeds = []
     
     with ThreadPoolExecutor(max_workers=MAX_FEED_WORKERS) as executor:
         future_to_feed = {
             executor.submit(fetch_feed, feed_config): feed_config 
-            for feed_config in RSS_FEEDS
+            for feed_config in feeds_to_fetch
         }
         
         for future in as_completed(future_to_feed):
@@ -349,9 +350,9 @@ def filter_tech_news(news_items: List[NewsItem]) -> List[NewsItem]:
     return filtered
 
 
-def get_latest_news(limit: int = 10, active_topics: Optional[List[Any]] = None) -> List[NewsItem]:
+def get_latest_news(limit: int = 10, active_topics: Optional[List[Any]] = None, rss_feeds: Optional[List[Dict]] = None) -> List[NewsItem]:
     """Get the latest tech news items (keyword-filtered)."""
-    all_news = fetch_all_news()
+    all_news = fetch_all_news(rss_feeds)
     tech_news = filter_tech_news(all_news)
     prioritized = prioritize_news_items_by_topics(tech_news, active_topics)
     diversified = diversify_news_items(prioritized, limit=limit, max_per_source=MAX_PER_SOURCE)

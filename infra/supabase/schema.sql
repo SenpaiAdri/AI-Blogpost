@@ -105,3 +105,19 @@ create index if not exists topic_guidance_created_at_idx
 create unique index if not exists topic_guidance_active_keyword_uidx
   on public.topic_guidance (normalized_keyword)
   where status = 'ACTIVE';
+
+create table if not exists public.rss_sources (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  url text not null unique,
+  is_active boolean not null default true,
+  last_fetched_at timestamptz,
+  error_count integer default 0,
+  created_at timestamptz not null default now()
+);
+
+comment on table public.rss_sources is
+  'Admin-owned RSS feeds. Written by the Spring Boot admin backend and read by the Python ingestion worker.';
+
+create index if not exists rss_sources_is_active_idx
+  on public.rss_sources (is_active);

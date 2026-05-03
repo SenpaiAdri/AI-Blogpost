@@ -927,6 +927,8 @@ def finalize_result(
     topic: str,
     source_name: str,
     source_url: str,
+    input_tokens: int = 0,
+    output_tokens: int = 0,
 ) -> Optional[Dict[str, Any]]:
     """Validate, sanitize, and append common metadata."""
     fallback_fields: List[str] = []
@@ -949,6 +951,10 @@ def finalize_result(
         normalized.get("title", topic), normalized.get("content", "")
     )
     normalized["ai_model"] = model_name
+    normalized["usage_metadata"] = {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens
+    }
     return normalized
 
 
@@ -985,7 +991,7 @@ def generate_with_gemini(
             logger.warning(f"    Failed to parse JSON response")
             return None
 
-        return finalize_result(result, GEMINI_MODEL, topic, source_name, source_url)
+        return finalize_result(result, GEMINI_MODEL, topic, source_name, source_url, input_tokens, output_tokens)
         
     except Exception as e:
         logger.warning(f"    Gemini error: {e}")
@@ -1035,7 +1041,7 @@ def generate_with_openrouter(
             logger.warning(f"    Failed to parse JSON response")
             return None
 
-        return finalize_result(result, OPENROUTER_MODEL, topic, source_name, source_url)
+        return finalize_result(result, OPENROUTER_MODEL, topic, source_name, source_url, input_tokens, output_tokens)
         
     except json.JSONDecodeError as e:
         logger.warning(f"    JSON parse error: {e}")
