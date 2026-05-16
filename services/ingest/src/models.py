@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import List, Optional, Any
+from typing import List, Optional, Any, Dict
 import re
 import html
 
@@ -30,6 +30,7 @@ class PostInsertModel(BaseModel):
     source_url: List[SourceModel] = Field(..., min_length=1)
     tags: List[str] = Field(..., min_length=1, max_length=5)
     ai_model: Optional[str] = "gemini-2.5-flash"
+    usage_metadata: Optional[Dict[str, int]] = None
     is_published: bool = True
     published_at: Optional[str] = Field(default_factory=lambda: datetime.now().isoformat())
     cover_image: Optional[str] = "https://images.unsplash.com/photo-1677442136019-21780ecad995"
