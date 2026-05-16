@@ -136,6 +136,7 @@ def save_post(client, post_data: dict) -> bool:
         
         post_data_clean = post_data.copy()
         post_data_clean.pop("tags", None)
+        post_data_clean.pop("usage_metadata", None)
         
         post_response = client.from_("posts").insert(post_data_clean).execute()
         
@@ -437,6 +438,7 @@ def batch_save_posts(client, posts_data: List[Dict]) -> bool:
             
             post_data_clean = post_data.copy()
             post_data_clean.pop("tags", None)
+            post_data_clean.pop("usage_metadata", None)
             posts_to_insert.append(post_data_clean)
             post_tags_list.append(post_tags)
         
