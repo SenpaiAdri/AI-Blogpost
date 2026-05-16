@@ -29,7 +29,7 @@ class PostInsertModel(BaseModel):
     tldr: List[str] = Field(..., min_length=1, max_length=5)
     source_url: List[SourceModel] = Field(..., min_length=1)
     tags: List[str] = Field(..., min_length=1, max_length=5)
-    ai_model: Optional[str] = "gemini-2.5-flash"
+    ai_model: Optional[str] = None
     usage_metadata: Optional[Dict[str, int]] = None
     is_published: bool = True
     published_at: Optional[str] = Field(default_factory=lambda: datetime.now().isoformat())

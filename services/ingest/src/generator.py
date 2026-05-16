@@ -1059,28 +1059,28 @@ def generate_blog_post(
     source_url: str,
     active_topics: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Generate blog post from tech news context; tries Gemini first, then OpenRouter."""
+    """Generate blog post from tech news context; tries OpenRouter first, then Gemini."""
     
-    logger.info(f"    Trying Gemini...")
+    logger.info(f"    Trying OpenRouter...")
     
     if not cost_tracker.should_continue():
         logger.warning(f"    Budget exhausted, skipping AI generation")
         return None
     
-    result = generate_with_gemini(topic, article_content, source_name, source_url, active_topics=active_topics)
+    result = generate_with_openrouter(topic, article_content, source_name, source_url, active_topics=active_topics)
     if result:
-        logger.info(f"    ✓ Gemini succeeded")
+        logger.info(f"    ✓ OpenRouter succeeded")
         return result
     
-    logger.info(f"    Trying OpenRouter...")
+    logger.info(f"    Trying Gemini (fallback)...")
     
     if not cost_tracker.should_continue():
         logger.warning(f"    Budget exhausted, skipping fallback")
         return None
     
-    result = generate_with_openrouter(topic, article_content, source_name, source_url, active_topics=active_topics)
+    result = generate_with_gemini(topic, article_content, source_name, source_url, active_topics=active_topics)
     if result:
-        logger.info(f"    ✓ OpenRouter succeeded")
+        logger.info(f"    ✓ Gemini succeeded")
         return result
     
     logger.warning(f"    AI generation failed, no more providers to try")
