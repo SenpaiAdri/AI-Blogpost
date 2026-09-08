@@ -28,10 +28,16 @@ RSS_FEEDS = [
     {"name": "Wired", "url": "https://www.wired.com/feed/rss"},
     {"name": "Engadget", "url": "https://www.engadget.com/rss.xml"},
     {"name": "CNET", "url": "https://www.cnet.com/rss/news/"},
-    {"name": "ZDNet", "url": "https://www.zdnet.com/news/rss.xml"},
+    # NOTE: ZDNet retired the old /news/rss.xml path (404). Current canonical
+    # feeds live under /rss/<topic>/ — using the AI feed as it best fits the
+    # AI/SWE scope (verified 200 application/atom+xml).
+    {"name": "ZDNet", "url": "https://www.zdnet.com/rss/artificial-intelligence/"},
     {"name": "BBC Technology", "url": "https://feeds.bbci.co.uk/news/technology/rss.xml"},
     {"name": "The Register", "url": "https://www.theregister.com/headlines.rss"},
-    {"name": "VentureBeat", "url": "https://venturebeat.com/feed/"},
+    # VentureBeat disabled: consistently returns HTTP 429 to non-browser
+    # clients (bot-walled), so neither the health check nor feedparser can
+    # fetch it. Re-enable if they unblock automated readers.
+    # {"name": "VentureBeat", "url": "https://venturebeat.com/feed/"},
     # --- Security (kept; filter only passes AI/dev-angled items) ---
     {"name": "BleepingComputer", "url": "https://www.bleepingcomputer.com/feed/"},
     {"name": "Krebs on Security", "url": "https://krebsonsecurity.com/feed/"},

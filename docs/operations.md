@@ -55,6 +55,8 @@ Flash 0731 primary, GLM 5.3 Flash fallback):
 
 `.github/workflows/rss-health.yml` validates configured RSS endpoints. It should run when feed definitions or RSS checking scripts change, and on a recurring schedule.
 
+Failure policy in `services/ingest/scripts/check_rss_feeds.py`: transient errors (HTTP 429/5xx, timeouts, connection/DNS errors) are retried 3x with backoff; permanent errors (other 4xx like 404/410) fail fast. Any feed still failing exits 1 so dead feeds stay visible — fix the URL or remove the feed rather than ignoring red runs.
+
 ## Runtime Notes
 
 - The ingest worker should use a Supabase service role key because it writes posts, tags, and audit records.
