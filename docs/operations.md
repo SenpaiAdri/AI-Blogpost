@@ -51,6 +51,27 @@ Flash 0731 primary, GLM 5.3 Flash fallback):
 - `OPENROUTER_PRIMARY_MODEL`
 - `OPENROUTER_FALLBACK_MODEL`
 
+## Reading generation warnings
+
+Per-item AI failures are retried automatically (fallback model, then whole-item
+retry), so occasional warnings in a green run are normal and need no action
+when `pipeline_summary` shows `new_posts_saved` matching `candidates`. The two
+common warnings and what they mean:
+
+- `Failed to parse JSON response` (+ `Response preview` line): the model
+  returned non-JSON output (prose wrapping, bad escapes, or truncation at
+  `AI_MAX_TOKENS`). The 500-char preview shows which. Occasional hits are
+  sampling noise; frequent hits across many items suggest the prompt or token
+  limit needs attention.
+- `Empty model response (finish_reason=...)`: the provider returned no
+  content — a content-filter refusal (check the `refusal=` snippet; security /
+  offensive-tech stories trip this most) or an upstream hiccup. Retries
+  usually pass. If one topic angle refuses repeatedly, consider whether the
+  story fits the AI/SWE scope before forcing it through.
+
+Act only when warnings cluster: repeated `failed_ai` / `failed_validation` in
+`pipeline_summary`, or the same item exhausting all retries.
+
 ## RSS Health
 
 `.github/workflows/rss-health.yml` validates configured RSS endpoints. It should run when feed definitions or RSS checking scripts change, and on a recurring schedule.

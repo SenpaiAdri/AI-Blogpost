@@ -62,16 +62,36 @@ def generate_with_openrouter(
             max_tokens=AI_MAX_TOKENS,
         )
 
-        text = response.choices[0].message.content
+        text = (getattr(response.choices[0].message, "content", None) or "")
+        finish_reason = getattr(response.choices[0], "finish_reason", None)
         logger.debug(f"    Raw response length: {len(text)}")
+        if not text:
+            # Provider returned no content: content-filter refusal, empty
+            # completion, or upstream hiccup. Never len()/parse None — say
+            # what happened so CI logs stay diagnosable.
+            refusal = getattr(response.choices[0].message, "refusal", None)
+            refusal_note = f", refusal={str(refusal)[:300]!r}" if refusal else ""
+            logger.warning(
+                "    Empty model response (finish_reason=%s%s); "
+                "possible content filter or provider hiccup",
+                finish_reason,
+                refusal_note,
+            )
+            return None
 
-        input_tokens = response.usage.prompt_tokens if hasattr(response, 'usage') else estimate_tokens(article_content[:SOURCE_CHAR_LIMIT])
-        output_tokens = response.usage.completion_tokens if hasattr(response, 'usage') else estimate_tokens(text)
+        usage = getattr(response, "usage", None)
+        input_tokens = getattr(usage, "prompt_tokens", None)
+        output_tokens = getattr(usage, "completion_tokens", None)
+        if input_tokens is None:
+            input_tokens = estimate_tokens(article_content[:SOURCE_CHAR_LIMIT])
+        if output_tokens is None:
+            output_tokens = estimate_tokens(text)
         cost_tracker.track_request(model, input_tokens, output_tokens)
 
         result = recover_json(text)
         if not result:
             logger.warning("    Failed to parse JSON response")
+            logger.warning("    Response preview (first 500 chars): %r", text[:500])
             return None
 
         return finalize_result(result, model, topic, source_name, source_url, input_tokens, output_tokens)

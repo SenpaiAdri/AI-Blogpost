@@ -1,3 +1,4 @@
+import json
 import sys
 import types
 import unittest
@@ -108,6 +109,122 @@ class OpenRouterChainTests(unittest.TestCase):
             self.assertIn(model, TOKEN_PRICING)
             self.assertGreater(TOKEN_PRICING[model]["input"], 0)
             self.assertGreater(TOKEN_PRICING[model]["output"], 0)
+
+
+class _FakeMessage:
+    def __init__(self, content=None, refusal=None):
+        self.content = content
+        self.refusal = refusal
+
+
+class _FakeChoice:
+    def __init__(self, message, finish_reason="stop"):
+        self.message = message
+        self.finish_reason = finish_reason
+
+
+class _FakeUsage:
+    def __init__(self, prompt_tokens=10, completion_tokens=20):
+        self.prompt_tokens = prompt_tokens
+        self.completion_tokens = completion_tokens
+
+
+class _FakeResponse:
+    def __init__(self, content, usage="default", finish_reason="stop", refusal=None):
+        self.choices = [_FakeChoice(_FakeMessage(content, refusal), finish_reason)]
+        self.usage = _FakeUsage() if usage == "default" else usage
+
+
+class _FakeClient:
+    def __init__(self, response):
+        self._response = response
+
+    @property
+    def chat(self):
+        client = self
+
+        class _Completions:
+            def create(self, **kwargs):
+                return client._response
+
+        class _Chat:
+            completions = _Completions()
+
+        return _Chat()
+
+
+def _valid_payload():
+    return {
+        "title": "Robustness check post",
+        "slug": "robustness-check-post",
+        "tldr": ["A", "B", "C"],
+        "content": "## New checkpoint ships\n\nAll key details are sourced. " * 20,
+        "excerpt": "A new model checkpoint ships with lower inference cost.",
+        "tags": ["LLM"],
+    }
+
+
+class GenerateWithOpenRouterRobustnessTests(unittest.TestCase):
+    def _call(self, response):
+        with (
+            patch.object(generator, "OpenAI", return_value=_FakeClient(response)),
+            patch.object(generator, "OPENROUTER_API_KEY", "test-key"),
+            patch.object(generator, "cost_tracker"),
+        ):
+            return generator.generate_with_openrouter(
+                topic="Robustness check",
+                article_content="Source confirms a model release.",
+                source_name="Example News",
+                source_url="https://example.com/story",
+            )
+
+    def test_none_content_returns_none_with_clear_warning(self):
+        response = _FakeResponse(
+            content=None,
+            finish_reason="content_filter",
+            refusal="I cannot help with that.",
+        )
+        with self.assertLogs(generator.logger, level="WARNING") as logctx:
+            result = self._call(response)
+
+        self.assertIsNone(result)
+        self.assertTrue(
+            any("Empty model response" in message for message in logctx.output),
+            logctx.output,
+        )
+        self.assertTrue(
+            any("content_filter" in message for message in logctx.output),
+            logctx.output,
+        )
+
+    def test_none_usage_falls_back_to_estimates(self):
+        response = _FakeResponse(content=json.dumps(_valid_payload()), usage=None)
+        result = self._call(response)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["title"], "Robustness check post")
+
+    def test_unparseable_content_logs_preview(self):
+        response = _FakeResponse(content="plain prose, no JSON at all {{{")
+        with self.assertLogs(generator.logger, level="WARNING") as logctx:
+            result = self._call(response)
+
+        self.assertIsNone(result)
+        self.assertTrue(
+            any("Failed to parse JSON response" in m for m in logctx.output),
+            logctx.output,
+        )
+        self.assertTrue(
+            any("Response preview" in m for m in logctx.output),
+            logctx.output,
+        )
+
+    def test_valid_json_with_usage_succeeds(self):
+        response = _FakeResponse(content=json.dumps(_valid_payload()))
+        result = self._call(response)
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result["title"], "Robustness check post")
 
 
 if __name__ == "__main__":
