@@ -46,9 +46,8 @@ def validate_environment() -> bool:
         logger.error("Missing required environment variables: SUPABASE_SERVICE_KEY or SUPABASE_SERVICE_ROLE_KEY")
         return False
     
-    has_any_ai_key = os.getenv("GOOGLE_API_KEY") or os.getenv("OPEN_ROUTER_API_KEY")
-    if not has_any_ai_key:
-        logger.error("No AI API keys found (GOOGLE_API_KEY or OPEN_ROUTER_API_KEY required)")
+    if not os.getenv("OPEN_ROUTER_API_KEY"):
+        logger.error("Missing required environment variables: OPEN_ROUTER_API_KEY")
         return False
     
     return True

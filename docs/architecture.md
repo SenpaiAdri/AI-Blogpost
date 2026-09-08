@@ -27,7 +27,7 @@ flowchart LR
 ## Data Flow
 
 1. GitHub Actions starts the ingest worker on a schedule or manual dispatch.
-2. The worker fetches RSS feeds and filters for technology-related items.
+2. The worker fetches RSS feeds and filters for AI + software-engineering items (tiered keyword gate: AI/SWE core terms pass; security/infra/hardware/big-tech/quantum/robotics only pass with an AI or SWE co-signal).
 3. Candidate stories are deduplicated and enriched with scraped article content when available.
 4. The AI generator returns structured post data.
 5. The worker validates and stores the post, tags, sources, and audit metadata in Supabase.

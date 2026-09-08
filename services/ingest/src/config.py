@@ -50,19 +50,20 @@ RSS_TIMEOUT_SECONDS = int(os.getenv("RSS_TIMEOUT_SECONDS", "25"))
 # AI GENERATION SETTINGS
 # ============================================================================
 
-# Primary AI model
-DEFAULT_AI_MODEL = os.getenv("DEFAULT_AI_MODEL", "gemini-2.5-flash")
+# Primary AI model (OpenRouter)
+DEFAULT_AI_MODEL = os.getenv("DEFAULT_AI_MODEL") or "deepseek/deepseek-v4-flash-0731"
 
-# Fallback AI model
-FALLBACK_AI_MODEL = os.getenv("FALLBACK_AI_MODEL", "google/gemma-3-27b-it")
+# Fallback AI model (OpenRouter)
+FALLBACK_AI_MODEL = os.getenv("FALLBACK_AI_MODEL") or "z-ai/glm-5.3-flash"
 
-# OpenRouter settings
-OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemma-3-27b-it")
+# OpenRouter settings (OpenRouter-only chain: DeepSeek primary, GLM fallback)
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL") or "deepseek/deepseek-v4-flash-0731"
+OPENROUTER_FALLBACK_MODEL = os.getenv("OPENROUTER_FALLBACK_MODEL") or "z-ai/glm-5.3-flash"
 OPENROUTER_BASE_URL = os.getenv("OPENROUTER_BASE_URL", "https://openrouter.ai/api/v1")
 
-# Token limits for content sent to AI
-CONTENT_TOKEN_LIMIT_GEMINI = int(os.getenv("CONTENT_TOKEN_LIMIT_GEMINI", "4000"))
-CONTENT_TOKEN_LIMIT_OPENROUTER = int(os.getenv("CONTENT_TOKEN_LIMIT_OPENROUTER", "8000"))
+# Token limits for content sent to AI (OpenRouter primary / fallback)
+CONTENT_TOKEN_LIMIT_PRIMARY = int(os.getenv("CONTENT_TOKEN_LIMIT_PRIMARY", "8000"))
+CONTENT_TOKEN_LIMIT_FALLBACK = int(os.getenv("CONTENT_TOKEN_LIMIT_FALLBACK", "8000"))
 
 # Generation parameters
 AI_TEMPERATURE = float(os.getenv("AI_TEMPERATURE", "0.7"))

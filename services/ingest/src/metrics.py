@@ -41,6 +41,17 @@ TOKEN_PRICING = {
         "output": 0.20,
         "unit": "per_million"
     },
+    # OpenRouter-only chain (live OpenRouter rates, Sep 2026; re-check periodically).
+    "deepseek/deepseek-v4-flash-0731": {
+        "input": 0.065,
+        "output": 0.18,
+        "unit": "per_million"
+    },
+    "z-ai/glm-5.3-flash": {
+        "input": 0.075,
+        "output": 0.25,
+        "unit": "per_million"
+    },
 }
 
 DAILY_BUDGET_LIMIT = 2.0

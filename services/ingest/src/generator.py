@@ -4,7 +4,6 @@ import re
 import html
 import threading
 import requests
-import google.generativeai as genai
 from openai import OpenAI
 from typing import Optional, Dict, Any, List
 from datetime import datetime
@@ -32,7 +31,6 @@ _INLINE_IMAGE_ALLOWED_DOMAINS = {
     if d.strip()
 }
 
-GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY")
 OPENROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
 
 # If true, replace ![alt](url) with a text link to the article (no hotlinked images).
@@ -42,21 +40,24 @@ _STRIP_MARKDOWN_IMAGES = os.getenv("STRIP_MARKDOWN_IMAGES", "").strip().lower() 
     "yes",
 )
 
-if GOOGLE_API_KEY:
-    genai.configure(api_key=GOOGLE_API_KEY)
-
-GEMINI_MODEL = "gemini-2.5-flash"
-OPENROUTER_MODEL = "google/gemma-3-27b-it"
+# OpenRouter-only chain: DeepSeek V4 Flash (pinned snapshot) primary,
+# GLM 5.3 Flash fallback. Both ~$0.10/mo at 300 posts/month, ~20x under
+# a $2/mo budget. Override via env without code changes; empty env falls
+# back to the defaults below.
+OPENROUTER_PRIMARY_MODEL = os.getenv("OPENROUTER_PRIMARY_MODEL") or "deepseek/deepseek-v4-flash-0731"
+OPENROUTER_FALLBACK_MODEL = os.getenv("OPENROUTER_FALLBACK_MODEL") or "z-ai/glm-5.3-flash"
+# Backward-compat alias (primary). Prefer the explicit constants above.
+OPENROUTER_MODEL = OPENROUTER_PRIMARY_MODEL
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 
 SYSTEM_PROMPT = """You are an expert tech blogger for a site called "AI Blogpost".
-Your task is to write a high-quality, engaging article for developers and IT readers based on a current tech news story.
+Your task is to write a high-quality, engaging article for developers and engineers based on a current AI or software-engineering news story.
 
-Scope: Cover the full technology landscape when the source material supports it — including AI/ML, security, cloud and infrastructure, developer tools, platforms (e.g. browsers, mobile, web), hardware/chips, and enterprise/SaaS — not only artificial intelligence.
+Scope: Cover ONLY AI/ML (models, LLM, agents, AI infra/tooling, AI research) and software engineering (languages, frameworks, dev tools, GitHub/open source, engineering practice). Security counts ONLY when it touches AI or developer tooling (e.g. prompt injection in LangChain, supply-chain attack on npm, CVE in PyTorch). Do NOT stretch general tech (consumer gadgets, games, maps, earnings/funding guides, pure cloud/infra patches, standalone quantum/robotics/hardware, enterprise SaaS) into developer analysis.
 
 Audience fit:
-- Focus on the technology angle. If the story is mainly politics, crime, culture, or general business, cover only the concrete technology relevance and avoid stretching it into developer analysis.
-- Do not imply a story matters to developers or IT teams unless the source material supports that connection.
+- Focus on the AI or software-engineering angle. If the story is mainly politics, crime, culture, general business, consumer tech, or pure IT operations, cover only the concrete AI/SWE relevance and avoid stretching it into developer analysis.
+- Do not imply a story matters to developers or engineers unless the source material supports that connection.
 
 Output Format: JSON only
 The output must be a valid JSON object with the following schema:
@@ -85,14 +86,15 @@ Perspective & Analysis:
 - Use this structure in content when possible: a brief opening paragraph, `## What Happened`, `## Why It Matters`, and `## What To Watch`.
 - After summarizing WHAT happened, include a "Why It Matters" section that explains the implications
 - Give readers your take on WHY this matters — not as opinion, but as analysis grounded in the facts presented
-- Consider: What does this mean for developers? For enterprises? For the industry?
+- Consider: What does this mean for developers and engineers building with AI or shipping software? For teams adopting AI tooling?
 - If the source presents competing viewpoints, acknowledge them briefly
 - NEVER invent a perspective — if the source doesn't give enough context to analyze, focus on the facts and say what readers should watch for
 - Keep analysis grounded in evidence from the source material
 
 Tags:
 - Use 3-5 specific tags that reflect the real topic.
-- Prefer this taxonomy when it fits: AI, Security, Cloud, DevOps, Developer Tools, Hardware, Policy, Data Centers, Quantum, Robotics, Open Source, Platforms, Enterprise.
+- Prefer this taxonomy when it fits: AI, Machine Learning, LLM, AI Agents, Developer Tools, Programming, Open Source, DevOps, Security, Data.
+- Only use Security when the story has an AI or developer-tooling angle; avoid standalone Quantum, Robotics, Hardware, Policy, Data Centers, Platforms, or Enterprise unless the AI/SWE connection is explicit in the source.
 - Do not return only "Tech News"; use "Tech News" only alongside more specific tags if absolutely necessary.
 
 Guidelines:
@@ -671,11 +673,11 @@ Source: {source_name}
 Link: {source_url}
 
 Editorial rules:
-- Lead with the technology relevance, not generic news framing.
+- Lead with the AI or software-engineering relevance, not generic news framing.
 - Use this content structure when possible: opening paragraph, ## What Happened, ## Why It Matters, ## What To Watch.
-- If this is only weakly technology-related, keep the article concise and state the limited tech relevance.
+- If this is only weakly AI/software-engineering-related, keep the article concise and state the limited relevance instead of stretching it.
 - Write one complete-sentence excerpt under 180 characters.
-- Return 3-5 specific tags from the topic area; never return only "Tech News".
+- Return 3-5 specific tags from the AI/SWE topic area; never return only "Tech News".
 
 Image policy: Only embed `![alt](url)` if that exact URL appears in Source Material. Otherwise describe the image and point readers to the link above. When you embed, add a one-line credit under the image pointing to the article URL.
 
@@ -958,57 +960,20 @@ def finalize_result(
     return normalized
 
 
-def generate_with_gemini(
-    topic: str,
-    article_content: str,
-    source_name: str,
-    source_url: str,
-    active_topics: Optional[List[Dict[str, Any]]] = None,
-) -> Optional[Dict[str, Any]]:
-    """Generate blog post using Google Gemini."""
-    if not GOOGLE_API_KEY:
-        return None
-    
-    try:
-        model = genai.GenerativeModel(
-            model_name=GEMINI_MODEL,
-            system_instruction=SYSTEM_PROMPT
-        )
-        
-        user_prompt = build_user_prompt(
-            topic, article_content, source_name, source_url, source_char_limit=4000, active_topics=active_topics
-        )
-
-        response = model.generate_content(user_prompt)
-        text = response.text
-        
-        input_tokens = response.usage_metadata.prompt_token_count if hasattr(response, 'usage_metadata') else estimate_tokens(article_content[:4000])
-        output_tokens = response.usage_metadata.candidates_token_count if hasattr(response, 'usage_metadata') else estimate_tokens(text)
-        cost_tracker.track_request(GEMINI_MODEL, input_tokens, output_tokens)
-        
-        result = recover_json(text)
-        if not result:
-            logger.warning(f"    Failed to parse JSON response")
-            return None
-
-        return finalize_result(result, GEMINI_MODEL, topic, source_name, source_url, input_tokens, output_tokens)
-        
-    except Exception as e:
-        logger.warning(f"    Gemini error: {e}")
-        return None
-
-
 def generate_with_openrouter(
     topic: str,
     article_content: str,
     source_name: str,
     source_url: str,
     active_topics: Optional[List[Dict[str, Any]]] = None,
+    model: Optional[str] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Generate blog post using OpenRouter (Llama)."""
+    """Generate blog post using OpenRouter with the given model (default: primary)."""
     if not OPENROUTER_API_KEY:
         return None
-    
+
+    model = model or OPENROUTER_PRIMARY_MODEL
+
     try:
         client = OpenAI(
             api_key=OPENROUTER_API_KEY,
@@ -1020,7 +985,7 @@ def generate_with_openrouter(
         )
 
         response = client.chat.completions.create(
-            model=OPENROUTER_MODEL,
+            model=model,
             messages=[
                 {"role": "system", "content": SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt}
@@ -1034,14 +999,14 @@ def generate_with_openrouter(
         
         input_tokens = response.usage.prompt_tokens if hasattr(response, 'usage') else estimate_tokens(article_content[:8000])
         output_tokens = response.usage.completion_tokens if hasattr(response, 'usage') else estimate_tokens(text)
-        cost_tracker.track_request(OPENROUTER_MODEL, input_tokens, output_tokens)
+        cost_tracker.track_request(model, input_tokens, output_tokens)
         
         result = recover_json(text)
         if not result:
             logger.warning(f"    Failed to parse JSON response")
             return None
 
-        return finalize_result(result, OPENROUTER_MODEL, topic, source_name, source_url, input_tokens, output_tokens)
+        return finalize_result(result, model, topic, source_name, source_url, input_tokens, output_tokens)
         
     except json.JSONDecodeError as e:
         logger.warning(f"    JSON parse error: {e}")
@@ -1059,30 +1024,35 @@ def generate_blog_post(
     source_url: str,
     active_topics: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[Dict[str, Any]]:
-    """Generate blog post from tech news context; tries OpenRouter first, then Gemini."""
-    
-    logger.info(f"    Trying OpenRouter...")
-    
+    """Generate blog post via OpenRouter-only chain: primary, then fallback model."""
+    logger.info(f"    Trying OpenRouter primary ({OPENROUTER_PRIMARY_MODEL})...")
+
     if not cost_tracker.should_continue():
         logger.warning(f"    Budget exhausted, skipping AI generation")
         return None
-    
-    result = generate_with_openrouter(topic, article_content, source_name, source_url, active_topics=active_topics)
+
+    result = generate_with_openrouter(
+        topic, article_content, source_name, source_url,
+        active_topics=active_topics, model=OPENROUTER_PRIMARY_MODEL,
+    )
     if result:
-        logger.info(f"    ✓ OpenRouter succeeded")
+        logger.info(f"    ✓ OpenRouter primary succeeded")
         return result
-    
-    logger.info(f"    Trying Gemini (fallback)...")
-    
+
+    logger.info(f"    Trying OpenRouter fallback ({OPENROUTER_FALLBACK_MODEL})...")
+
     if not cost_tracker.should_continue():
         logger.warning(f"    Budget exhausted, skipping fallback")
         return None
-    
-    result = generate_with_gemini(topic, article_content, source_name, source_url, active_topics=active_topics)
+
+    result = generate_with_openrouter(
+        topic, article_content, source_name, source_url,
+        active_topics=active_topics, model=OPENROUTER_FALLBACK_MODEL,
+    )
     if result:
-        logger.info(f"    ✓ Gemini succeeded")
+        logger.info(f"    ✓ OpenRouter fallback succeeded")
         return result
-    
+
     logger.warning(f"    AI generation failed, no more providers to try")
     return None
 

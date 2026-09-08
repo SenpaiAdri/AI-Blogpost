@@ -13,7 +13,7 @@ Python worker that fetches RSS feeds, scrapes articles, uses LLMs to generate bl
 
 ## Environment & Permissions
 - **Database Access:** Requires `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SERVICE_KEY`). It must use the service role key, not the anon key, as this worker handles trusted, privileged writes to the database.
-- **AI Keys:** Requires `GOOGLE_API_KEY` or `OPEN_ROUTER_API_KEY` for generation.
+- **AI Keys:** Requires `OPEN_ROUTER_API_KEY` for generation (OpenRouter-only chain).
 
 ## Developer Commands
 - Run worker: `python src/main.py`

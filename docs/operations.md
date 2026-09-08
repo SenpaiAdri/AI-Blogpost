@@ -20,11 +20,10 @@ When you make changes to the database schema directly on the Supabase website da
 
 The ingestion worker is run by `.github/workflows/ingest.yml`. The workflow installs Python dependencies, checks RSS feed availability, and runs the worker entrypoint.
 
-Required secrets:
+Required secrets (OpenRouter-only generation):
 
 - `SUPABASE_URL`
 - `SUPABASE_SERVICE_KEY`
-- `GOOGLE_API_KEY`
 - `OPEN_ROUTER_API_KEY`
 
 Optional secrets configure markdown image behavior and image verification:
@@ -33,6 +32,12 @@ Optional secrets configure markdown image behavior and image verification:
 - `ALLOW_INLINE_IMAGE_DOMAINS`
 - `VERIFY_INLINE_IMAGES`
 - `IMAGE_URL_CHECK_TIMEOUT_SECONDS`
+
+Optional secrets override the OpenRouter model chain (defaults: DeepSeek V4
+Flash 0731 primary, GLM 5.3 Flash fallback):
+
+- `OPENROUTER_PRIMARY_MODEL`
+- `OPENROUTER_FALLBACK_MODEL`
 
 ## RSS Health
 
