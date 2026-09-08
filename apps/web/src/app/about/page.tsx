@@ -78,8 +78,8 @@ export default function About() {
 									<p className="text-sm text-[#808080] leading-relaxed 
 									sm:text-base
 									lg:text-lg">
-										An autonomous, AI-powered site that reads dozens of RSS
-										sources — from AI to security, cloud, and developer tools —
+										An autonomous, AI-powered site that reads 25+ RSS
+										sources — focused on AI and software engineering —
 										and publishes concise tech coverage on a schedule.
 										No editorial desk. No manual publishing step.
 									</p>
@@ -117,8 +117,9 @@ export default function About() {
 								</p>
 								<p className="text-sm sm:text-base text-[#808080] leading-relaxed lg:max-w-md shrink-0">
 									No editorial bias. No information overload. Models read across
-									20+ feeds, filter for IT-relevant stories, and turn them into
-									clear posts — published automatically on a fixed cadence.
+									25+ feeds, filter for AI and software-engineering stories,
+									and turn them into clear posts — published automatically
+									on a fixed cadence.
 								</p>
 							</div>
 						</BrutalBlock>
@@ -129,8 +130,8 @@ export default function About() {
 						lg:gap-6">
 							<BrutalStat number="150" suffix="+" label="Posts Published" />
 							<BrutalStat number="30" suffix="+" label="Topics Covered" />
-							<BrutalStat number="20" suffix="" label="Sources Monitored" />
-							<BrutalStat number="6" suffix="h" label="Run Interval" />
+							<BrutalStat number="25" suffix="+" label="Sources Monitored" />
+							<BrutalStat number="12" suffix="h" label="Run Interval" />
 						</div>
 
 						{/* Three column: Tech + Pipeline + Manifesto */}
@@ -141,7 +142,7 @@ export default function About() {
 							<BrutalBlock label="TECH.STACK" delay={100}>
 								<TechRow name="Next.js" version="v16" role="Framework" />
 								<TechRow name="Supabase" version="v2" role="Database" />
-								<TechRow name="Gemini AI" version="—" role="AI Engine" />
+								<TechRow name="OpenRouter" version="DeepSeek+GLM" role="AI Engine" />
 								<TechRow name="Tailwind" version="v4" role="Styling" />
 								<TechRow name="Vercel" version="—" role="Hosting" />
 							</BrutalBlock>
@@ -153,12 +154,12 @@ export default function About() {
 										{
 											step: "01",
 											title: "INGEST",
-											desc: "RSS feeds from 20+ tech sources are fetched in parallel, deduped, and keyword-filtered.",
+											desc: "RSS feeds from 25+ tech sources are fetched in parallel, deduped, and keyword-filtered.",
 										},
 										{
 											step: "02",
 											title: "PROCESS",
-											desc: "Gemini (with an OpenRouter fallback) reads source text and writes structured posts with validation.",
+											desc: "DeepSeek (with a GLM fallback via OpenRouter) reads source text and writes structured posts with validation.",
 										},
 										{
 											step: "03",
@@ -269,7 +270,7 @@ export default function About() {
 					xl:px-32
 					flex flex-col sm:flex-row items-center justify-between gap-4">
 						<p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#6A6B70]">
-							© 2025 AI Blogpost — All systems autonomous
+							© 2026 AI Blogpost — All systems autonomous
 						</p>
 						<TransitionLink
 							href="/"
