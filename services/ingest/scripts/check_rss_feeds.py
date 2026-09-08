@@ -12,7 +12,7 @@ def main() -> int:
     src = os.path.normpath(os.path.join(root, "..", "src"))
     sys.path.insert(0, src)
 
-    from rss_feeds import RSS_FEEDS
+    from selection.rss_feeds import RSS_FEEDS
 
     failures = []
     for fc in RSS_FEEDS:

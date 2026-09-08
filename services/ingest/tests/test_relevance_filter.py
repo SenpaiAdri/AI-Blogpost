@@ -7,7 +7,8 @@ backend_src = Path(__file__).resolve().parents[1] / "src"
 if str(backend_src) not in sys.path:
     sys.path.insert(0, str(backend_src))
 
-from ingest import NewsItem, filter_tech_news, text_matches_tech_keywords
+from selection.models import NewsItem
+from selection.relevance import filter_tech_news, text_matches_tech_keywords
 
 
 def _item(title: str, snippet: str = "") -> NewsItem:

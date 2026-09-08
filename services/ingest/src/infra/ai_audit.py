@@ -1,6 +1,6 @@
 from typing import Any, Dict, Optional
 
-from logger import get_logger
+from infra.logger import get_logger
 
 logger = get_logger("ai_audit")
 

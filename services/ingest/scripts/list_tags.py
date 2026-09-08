@@ -27,7 +27,7 @@ def main() -> int:
     sys.path.insert(0, src)
 
     try:
-        from database import get_supabase_client
+        from infra.database import get_supabase_client
     except ModuleNotFoundError as exc:
         need = exc.name or "dependency"
         print(

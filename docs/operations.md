@@ -28,10 +28,22 @@ Required secrets (OpenRouter-only generation):
 
 Optional secrets configure markdown image behavior and image verification:
 
-- `STRIP_MARKDOWN_IMAGES`
+- `STRIP_MARKDOWN_IMAGES` — inline publisher images are stripped by default
+  (replaced with a link back to the original article) to avoid copyright and
+  hotlinking risk. Stripping stays ON unless explicitly set to `0`/`false`/
+  `no`/`off`; an unset secret still strips. Set `STRIP_MARKDOWN_IMAGES=0`
+  only when embeds are licensed or explicitly allowed.
 - `ALLOW_INLINE_IMAGE_DOMAINS`
 - `VERIFY_INLINE_IMAGES`
 - `IMAGE_URL_CHECK_TIMEOUT_SECONDS`
+
+Cover images are intentionally disabled: new posts are written with
+`cover_image=None` (no external hotlinks, no licensing ambiguity). The
+`posts.cover_image` column stays nullable so old rows keep working; to null
+existing covers run
+`python services/ingest/scripts/backfill_remove_covers.py --dry-run` first,
+then without `--dry-run`. To strip inline images on existing rows, use
+`scripts/backfill_inline_image_attribution.py` the same way.
 
 Optional secrets override the OpenRouter model chain (defaults: DeepSeek V4
 Flash 0731 primary, GLM 5.3 Flash fallback):

@@ -3,7 +3,8 @@ import time
 import threading
 from urllib.parse import urlparse
 
-from logger import get_logger
+from config import RATE_LIMIT_RPS_DEFAULT
+from infra.logger import get_logger
 
 logger = get_logger("rate_limit")
 
@@ -52,7 +53,7 @@ class DomainRateLimiter:
             time.sleep(sleep_for)
 
 
-DEFAULT_RPS = _float_env("RATE_LIMIT_RPS_DEFAULT", 2.0)
+DEFAULT_RPS = _float_env("RATE_LIMIT_RPS_DEFAULT", RATE_LIMIT_RPS_DEFAULT)
 domain_rate_limiter = DomainRateLimiter(default_rps=DEFAULT_RPS)
 
 

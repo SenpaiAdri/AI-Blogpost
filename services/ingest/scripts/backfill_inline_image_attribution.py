@@ -55,8 +55,8 @@ def main() -> int:
     sys.path.insert(0, src)
 
     try:
-        from database import get_supabase_client
-        from generator import _MARKDOWN_IMAGE, process_inline_images
+        from infra.database import get_supabase_client
+        from generation.images import _MARKDOWN_IMAGE, process_inline_images
     except ModuleNotFoundError as exc:
         need = exc.name or "dependency"
         print(

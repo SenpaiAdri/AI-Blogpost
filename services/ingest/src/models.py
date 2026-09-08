@@ -3,10 +3,12 @@ from typing import List, Optional, Any, Dict
 import re
 import html
 
-from security import (
-    validate_url, sanitize_text, generate_safe_slug, 
-    MAX_TITLE_LENGTH, MAX_CONTENT_LENGTH, MIN_BLOG_CONTENT_CHARS, MAX_EXCERPT_LENGTH
+from config import (
+    MAX_CONTENT_LENGTH, MAX_EXCERPT_LENGTH, MAX_TITLE_LENGTH, MIN_BLOG_CONTENT_CHARS,
 )
+from safety.sanitization import sanitize_text
+from safety.slugs import generate_safe_slug
+from safety.url_validation import validate_url
 
 from datetime import datetime
 
@@ -33,7 +35,9 @@ class PostInsertModel(BaseModel):
     usage_metadata: Optional[Dict[str, int]] = None
     is_published: bool = True
     published_at: Optional[str] = Field(default_factory=lambda: datetime.now().isoformat())
-    cover_image: Optional[str] = "https://images.unsplash.com/photo-1677442136019-21780ecad995"
+    # No cover images: avoids unlicensed hotlinking. Column stays nullable for
+    # existing rows; new posts are written with cover_image=None.
+    cover_image: Optional[str] = None
 
     @field_validator('title', mode='before')
     @classmethod

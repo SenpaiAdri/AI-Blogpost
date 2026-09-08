@@ -45,8 +45,9 @@ def main() -> int:
     sys.path.insert(0, src)
 
     try:
-        from database import get_supabase_client
-        from security import MAX_EXCERPT_LENGTH, MAX_TITLE_LENGTH, sanitize_text
+        from infra.database import get_supabase_client
+        from config import MAX_EXCERPT_LENGTH, MAX_TITLE_LENGTH
+        from safety.sanitization import sanitize_text
     except ModuleNotFoundError as exc:
         need = exc.name or "dependency"
         print(

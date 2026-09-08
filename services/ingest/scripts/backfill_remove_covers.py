@@ -1,22 +1,16 @@
 #!/usr/bin/env python3
-"""Close unbalanced ``` markdown fences in posts.content (Supabase).
+"""Null out posts.cover_image on existing rows (covers removed by policy).
 
-When the model omits a closing fence, or closes it only at the end of the post
-after prose and images, the article parses as one giant code block. This script
-runs generator.normalize_markdown_fences (repair leaked prose/images inside fences,
-then balance odd ``` counts) — same as ingest after fix_code_blocks.
+New posts are already written with cover_image=None. Use this one-off script
+to apply the same policy to previously published rows that still carry
+Unsplash hotlinks.
 
 Loads services/ingest/.env. Requires SUPABASE_URL and SUPABASE_SERVICE_KEY (or
 SUPABASE_SERVICE_ROLE_KEY).
 
-  # Preview changes
-  python services/ingest/scripts/backfill_balance_markdown_fences.py --dry-run
-
-  # Apply to all posts
-  python services/ingest/scripts/backfill_balance_markdown_fences.py
-
-  # Smoke test on first 5 rows
-  python services/ingest/scripts/backfill_balance_markdown_fences.py --dry-run --limit 5
+  python services/ingest/scripts/backfill_remove_covers.py --dry-run
+  python services/ingest/scripts/backfill_remove_covers.py
+  python services/ingest/scripts/backfill_remove_covers.py --dry-run --limit 5
 
 Requires ingest dependencies: pip install -r services/ingest/requirements.txt
 """
@@ -35,7 +29,6 @@ def main() -> int:
 
     try:
         from infra.database import get_supabase_client
-        from generation.markdown import normalize_markdown_fences
     except ModuleNotFoundError as exc:
         need = exc.name or "dependency"
         print(
@@ -65,6 +58,7 @@ def main() -> int:
     page_size = 200
     start = 0
     total_scanned = 0
+    total_with_cover = 0
     total_updated = 0
     processed_cap = args.limit if args.limit and args.limit > 0 else None
 
@@ -75,7 +69,7 @@ def main() -> int:
         end = start + page_size - 1
         response = (
             client.from_("posts")
-            .select("id, title, content")
+            .select("id, title, cover_image")
             .order("id")
             .range(start, end)
             .execute()
@@ -89,30 +83,28 @@ def main() -> int:
                 break
 
             total_scanned += 1
+            if not row.get("cover_image"):
+                continue
+
+            total_with_cover += 1
             pid = row["id"]
-            title_in = row.get("title") or ""
-            content_in = row.get("content") or ""
-            if not isinstance(content_in, str):
-                content_in = str(content_in)
-
-            content_out = normalize_markdown_fences(content_in)
-            if content_out == content_in:
-                continue
-
-            total_updated += 1
+            title_preview = (row.get("title") or "")[:56]
             if args.dry_run:
-                preview = title_in[:72] + ("…" if len(title_in) > 72 else "")
-                print(f"[dry-run] would update id={pid} title={preview!r}")
+                print(f"[dry-run] would null cover id={pid} title={title_preview!r}...")
                 continue
 
-            client.from_("posts").update({"content": content_out}).eq("id", pid).execute()
+            client.from_("posts").update({"cover_image": None}).eq("id", pid).execute()
+            total_updated += 1
 
         if len(rows) < page_size:
             break
         start += page_size
 
     mode = "dry-run" if args.dry_run else "applied"
-    print(f"Done ({mode}): scanned={total_scanned}, rows_with_changes={total_updated}")
+    print(
+        f"Done ({mode}): scanned={total_scanned}, "
+        f"posts_with_cover={total_with_cover}, rows_updated={total_updated}"
+    )
     return 0
 
 

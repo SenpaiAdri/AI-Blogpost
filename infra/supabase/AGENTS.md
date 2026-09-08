@@ -14,5 +14,5 @@ The system relies on Supabase acting as the integration boundary between the fro
 - **Backend (`services/ingest`)**: Has **FULL READ/WRITE** access using the `service_role` key. It handles writing posts, tags, and AI generation audit rows.
 
 ## Important Constraints & Rules
-- **Schema Alignment:** If you modify `schema.sql` or create a migration, you MUST ensure that the TypeScript types in `apps/web/src/lib/types.ts` and the Python data models/queries in `services/ingest/src/database.py` are updated accordingly to stay aligned.
+- **Schema Alignment:** If you modify `schema.sql` or create a migration, you MUST ensure that the TypeScript types in `apps/web/src/lib/types.ts` and the Python data models/queries in `services/ingest/src/infra/database.py` (+ `services/ingest/src/models.py`) are updated accordingly to stay aligned.
 - **No Direct Service Communication:** The web app and the Python worker never communicate directly via HTTP. They only interact via reading/writing to this Supabase schema.

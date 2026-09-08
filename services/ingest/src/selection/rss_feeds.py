@@ -1,10 +1,10 @@
-"""RSS feed registry (no third-party deps). Imported by ingest and health-check scripts.
+"""RSS feed registry (no third-party deps). Imported by feeds and health-check scripts.
 
 Relevance scope: AI + software engineering (+ security only with an AI/dev
-angle). The keyword filter in ingest.py is the primary gate: general-tech,
+angle). The keyword filter in relevance.py is the primary gate: general-tech,
 pure security/infra, quantum/robotics, and enterprise/SaaS items without an
 AI/SWE co-signal are rejected even if their feed is listed here. When
-`rss_sources` rows exist in Supabase, main.py prefers those DB feeds over
+`rss_sources` rows exist in Supabase, orchestrator prefers those DB feeds over
 this hardcoded fallback — curate the DB table toward AI/SWE sources too.
 """
 

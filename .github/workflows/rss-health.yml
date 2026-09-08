@@ -3,7 +3,8 @@ name: RSS feed health
 on:
   pull_request:
     paths:
-      - "services/ingest/src/rss_feeds.py"
+      - "services/ingest/src/selection/rss_feeds.py"
+      - "services/ingest/src/selection/feeds.py"
       - "services/ingest/scripts/check_rss_feeds.py"
       - ".github/workflows/rss-health.yml"
   push:

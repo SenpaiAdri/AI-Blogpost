@@ -7,12 +7,11 @@ backend_src = Path(__file__).resolve().parents[1] / "src"
 if str(backend_src) not in sys.path:
     sys.path.insert(0, str(backend_src))
 
-from ingest import (
-    NewsItem,
-    diversify_news_items,
+from selection.feeds import diversify_news_items, parse_entry_datetime
+from selection.models import NewsItem
+from selection.topics import (
     matched_topic_ids,
     normalize_topic_keyword,
-    parse_entry_datetime,
     prioritize_news_items_by_topics,
 )
 

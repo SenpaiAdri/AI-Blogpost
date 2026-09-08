@@ -2,9 +2,9 @@ import os
 import supabase
 from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
-from logger import get_logger
+from infra.logger import get_logger
 
-env_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env")
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
 load_dotenv(env_path)
 
 from config import DUPLICATE_CHECK_DAYS
@@ -30,7 +30,7 @@ def get_all_existing_urls(client, days: int = None) -> set:
     """Get existing source URLs from the last N days (default from config.py)."""
     if days is None:
         days = DUPLICATE_CHECK_DAYS
-    
+
     cutoff = (datetime.now() - timedelta(days=days)).isoformat()
     response = client.from_("posts").select("source_url").gte("published_at", cutoff).execute()
     urls = set()
@@ -58,6 +58,7 @@ def get_active_topic_guidance(client) -> list[dict]:
     except Exception as exc:
         logger.warning(f"Topic guidance unavailable; continuing without active topics: {exc}")
         return []
+
 def get_active_rss_sources(client) -> list[dict]:
     """Fetch active RSS sources from the database."""
     try:

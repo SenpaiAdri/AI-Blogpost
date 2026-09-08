@@ -1,7 +1,7 @@
-import os
 from typing import Dict, Optional, Callable, Any
 from datetime import datetime, timedelta
-from logger import get_logger
+from config import DAILY_BUDGET_LIMIT
+from infra.logger import get_logger
 
 logger = get_logger("metrics")
 
@@ -54,7 +54,6 @@ TOKEN_PRICING = {
     },
 }
 
-DAILY_BUDGET_LIMIT = 2.0
 _SUMMARY_PROVIDERS: Dict[str, Callable[[], Dict[str, Any]]] = {}
 
 
@@ -77,59 +76,63 @@ class CostTracker:
             "models_used": {},
             "start_time": datetime.now()
         }
-    
+
     def track_request(self, model: str, input_tokens: int, output_tokens: int) -> None:
         """Track an AI API request and calculate cost."""
         self.run_stats["total_requests"] += 1
         self.run_stats["successful_requests"] += 1
         self.run_stats["total_input_tokens"] += input_tokens
         self.run_stats["total_output_tokens"] += output_tokens
-        
+
         pricing = TOKEN_PRICING.get(model)
         if pricing:
             input_cost = (input_tokens / 1_000_000) * pricing["input"]
             output_cost = (output_tokens / 1_000_000) * pricing["output"]
             request_cost = input_cost + output_cost
             self.run_stats["total_cost"] += request_cost
-            
+
             if model not in self.run_stats["models_used"]:
                 self.run_stats["models_used"][model] = {"requests": 0, "cost": 0.0}
             self.run_stats["models_used"][model]["requests"] += 1
             self.run_stats["models_used"][model]["cost"] += request_cost
-            
+
             logger.debug(f"    {model}: {input_tokens} in, {output_tokens} out, ${request_cost:.4f}")
-    
+
     def track_failure(self, model: str) -> None:
         """Track a failed API request."""
         self.run_stats["total_requests"] += 1
         self.run_stats["failed_requests"] += 1
-        
+
         if model not in self.run_stats["models_used"]:
             self.run_stats["models_used"][model] = {"requests": 0, "cost": 0.0, "failures": 0}
         if "failures" not in self.run_stats["models_used"][model]:
             self.run_stats["models_used"][model]["failures"] = 0
         self.run_stats["models_used"][model]["failures"] += 1
-    
+
     def get_current_cost(self) -> float:
         """Get current run's total cost."""
         return self.run_stats["total_cost"]
-    
+
     def is_over_budget(self) -> bool:
         """Check if we've exceeded the daily budget."""
+        if DAILY_BUDGET_LIMIT <= 0:
+            return False
         return self.run_stats["total_cost"] >= DAILY_BUDGET_LIMIT
-    
+
     def should_continue(self) -> bool:
         """Determine if pipeline should continue based on budget."""
+        if DAILY_BUDGET_LIMIT <= 0:
+            return True
         remaining = DAILY_BUDGET_LIMIT - self.run_stats["total_cost"]
         if remaining <= 0:
             logger.warning(f"Budget exhausted (${self.run_stats['total_cost']:.2f}/{DAILY_BUDGET_LIMIT}), stopping early")
             return False
-        
+
         if remaining < 0.50:
             logger.warning(f"Low budget remaining (${remaining:.2f}), may stop early")
-        
+
         return True
-    
+
     def get_summary(self) -> Dict:
         """Get run summary for logging."""
         duration = (datetime.now() - self.run_stats["start_time"]).total_seconds()
@@ -154,12 +157,12 @@ class CostTracker:
         if extra_sections:
             summary["extra"] = extra_sections
         return summary
-    
+
     def log_summary(self) -> None:
         """Log the cost summary."""
         summary = self.get_summary()
         logger.info(f"Cost Summary: ${summary['total_cost_usd']} | {summary['total_requests']} requests | {summary['duration_seconds']}s")
-        
+
         for model, stats in summary["models"].items():
             logger.info(f"  {model}: {stats.get('requests', 0)} req, ${round(stats.get('cost', 0), 4)}")
         for section_name, section in summary.get("extra", {}).items():

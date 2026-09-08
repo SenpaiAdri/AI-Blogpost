@@ -1,4 +1,3 @@
-import importlib
 import sys
 import types
 import unittest
@@ -6,11 +5,13 @@ from pathlib import Path
 from unittest.mock import patch
 
 
-def _load_generator_module():
+def _ensure_src_on_path():
     backend_src = Path(__file__).resolve().parents[1] / "src"
     if str(backend_src) not in sys.path:
         sys.path.insert(0, str(backend_src))
 
+
+def _ensure_openai_stub():
     # Keep tests independent from external SDK installation status.
     if "google.generativeai" not in sys.modules:
         google_module = types.ModuleType("google")
@@ -26,10 +27,11 @@ def _load_generator_module():
         openai_module.OpenAI = object
         sys.modules["openai"] = openai_module
 
-    return importlib.import_module("generator")
 
+_ensure_src_on_path()
+_ensure_openai_stub()
 
-generator = _load_generator_module()
+from generation import llm_client as generator
 
 
 class OpenRouterChainTests(unittest.TestCase):
@@ -97,7 +99,7 @@ class OpenRouterChainTests(unittest.TestCase):
         self.assertEqual(mock_gen.call_count, 2)
 
     def test_chain_pricing_covers_both_models(self):
-        from metrics import TOKEN_PRICING
+        from infra.metrics import TOKEN_PRICING
 
         for model in (
             generator.OPENROUTER_PRIMARY_MODEL,

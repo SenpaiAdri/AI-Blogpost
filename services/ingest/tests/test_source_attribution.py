@@ -6,7 +6,7 @@ backend_src = Path(__file__).resolve().parents[1] / "src"
 if str(backend_src) not in sys.path:
     sys.path.insert(0, str(backend_src))
 
-from main import resolve_display_source_name
+from pipeline.sources import resolve_display_source_name
 
 
 class SourceAttributionTests(unittest.TestCase):

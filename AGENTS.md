@@ -39,7 +39,7 @@ python scripts/check_rss_feeds.py   # RSS health check (also run by CI)
 ## Cross-File Sync Rules (easy to miss)
 
 - Adding an env var to the Python worker -> also add it to the `env:` block of `.github/workflows/ingest.yml`, or the scheduled job won't receive it.
-- Changing `infra/supabase/schema.sql` or adding a migration -> update `apps/web/src/lib/types.ts` AND `services/ingest/src/database.py`, then regenerate `database.types.ts`.
+- Changing `infra/supabase/schema.sql` or adding a migration -> update `apps/web/src/lib/types.ts` AND `services/ingest/src/infra/database.py`, then regenerate `database.types.ts`.
 - Major system/architecture/deployment changes -> update the relevant doc in `docs/`.
 
 ## Conventions
@@ -47,7 +47,7 @@ python scripts/check_rss_feeds.py   # RSS health check (also run by CI)
 - Server Components fetch Supabase data directly (no separate API client import); interactive components need `"use client"`.
 - Skeleton loaders are Suspense fallbacks (not just `loading.tsx`); infinite scroll uses IntersectionObserver (see `PostFeed.tsx`).
 - Ingest worker: validate all AI output through `models.PostInsertModel` before DB insert; dedupe URLs against existing records before processing.
-- Outbound fetches must go through SSRF protection (`src/security.py`) and respect per-host RPS limits (`src/rate_limit.py`).
+- Outbound fetches must go through SSRF protection (`services/ingest/src/safety/url_validation.py`) and respect per-host RPS limits (`services/ingest/src/infra/rate_limit.py`).
 
 ## Env Setup
 
