@@ -6,7 +6,7 @@ import { getPaginatedTags } from "@/lib/posts";
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-export const revalidate = 120;
+export const revalidate = 600;
 
 const PAGE_SIZE = 50;
 

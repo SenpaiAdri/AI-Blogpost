@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import { Post, PostRow, Tag } from "@/lib/types";
 
@@ -6,6 +8,25 @@ const POSTS_WITH_TAGS_SELECT = `
       post_tags (
         tags (
           *
+        )
+      )
+    `;
+
+// Lightweight feed select: only columns BlogCard actually renders
+// (id, slug, title, tldr, published_at, source_url + tag id/name/slug).
+// Skips heavy `content` / `excerpt` / `cover_image` / `ai_model` columns.
+const POST_FEED_SELECT = `
+      id,
+      slug,
+      title,
+      tldr,
+      published_at,
+      source_url,
+      post_tags (
+        tags (
+          id,
+          name,
+          slug
         )
       )
     `;
@@ -23,7 +44,7 @@ function mapRowsToPosts(rawPosts: PostRow[] | null): Post[] {
 export async function getPosts(): Promise<Post[]> {
     const { data: rawPosts, error } = await supabase
         .from("posts")
-        .select(POSTS_WITH_TAGS_SELECT)
+        .select(POST_FEED_SELECT)
         .eq("is_published", true)
         .order("published_at", { ascending: false });
 
@@ -35,7 +56,10 @@ export async function getPosts(): Promise<Post[]> {
     return mapRowsToPosts(rawPosts as unknown as PostRow[]);
 }
 
-export async function getTagBySlug(slug: string): Promise<Tag | null> {
+// Per-request dedupe: generateMetadata + TopicFilterBarSection +
+// PostFeedSection (+ getPaginatedPosts internals) all look up the same
+// slug within one homepage render — this collapses them to 1 DB hit.
+export const getTagBySlug = cache(async (slug: string): Promise<Tag | null> => {
     if (!slug?.trim()) return null;
     const { data, error } = await supabase
         .from("tags")
@@ -47,7 +71,7 @@ export async function getTagBySlug(slug: string): Promise<Tag | null> {
         return null;
     }
     return data as Tag;
-}
+});
 
 export async function getPostsByTagSlug(tagSlug: string): Promise<Post[]> {
     const tag = await getTagBySlug(tagSlug);
@@ -68,7 +92,7 @@ export async function getPostsByTagSlug(tagSlug: string): Promise<Post[]> {
 
     const { data: rawPosts, error } = await supabase
         .from("posts")
-        .select(POSTS_WITH_TAGS_SELECT)
+        .select(POST_FEED_SELECT)
         .in("id", postIds)
         .eq("is_published", true)
         .order("published_at", { ascending: false });
@@ -106,9 +130,60 @@ export function aggregateTagsWithCounts(posts: Post[]): TagWithCount[] {
 }
 
 /** Tags that appear on at least one published post, sorted by popularity then name. */
-export async function getTagsWithPostCounts(): Promise<TagWithCount[]> {
-    return aggregateTagsWithCounts(await getPosts());
+async function fetchTagsWithPostCounts(): Promise<TagWithCount[]> {
+    // Lightweight path: fetch tag rows + published-only link counts.
+    // Never loads post bodies (the old implementation scanned the whole
+    // posts table with SELECT * just to count tags).
+    const { data: tagData, error } = await supabase
+        .from("tags")
+        .select("id, name, slug")
+        .order("name");
+
+    if (error || !tagData) {
+        console.error("Error fetching tags:", error);
+        return [];
+    }
+
+    const tags = tagData as unknown as Tag[];
+    const tagIds = tags.map((t) => t.id);
+    if (tagIds.length === 0) {
+        return [];
+    }
+
+    const { data: linkData, error: linkErr } = await supabase
+        .from("post_tags")
+        .select("tag_id, posts!inner(id)")
+        .in("tag_id", tagIds)
+        .eq("posts.is_published", true);
+
+    if (linkErr) {
+        console.error("Error fetching tag counts:", linkErr);
+        return [];
+    }
+
+    const countMap = new Map<string, number>();
+    for (const link of linkData || []) {
+        const tagId = String(link.tag_id);
+        countMap.set(tagId, (countMap.get(tagId) || 0) + 1);
+    }
+
+    return tags
+        .map((tag) => ({
+            tag,
+            count: countMap.get(String(tag.id)) || 0,
+        }))
+        .filter((t) => t.count > 0)
+        .sort((a, b) => b.count - a.count || a.tag.name.localeCompare(b.tag.name));
 }
+
+// Cross-request cache (free, no Redis): topics change only on ingest
+// (2x daily), so a 10-min TTL is safe and collapses every homepage
+// regeneration + topics page hit into one shared entry.
+export const getTagsWithPostCounts = unstable_cache(
+    fetchTagsWithPostCounts,
+    ["tags-with-post-counts"],
+    { revalidate: 600, tags: ["tags"] }
+);
 
 export async function getPostBySlug(slug: string): Promise<Post | null> {
     const { data: postData, error } = await supabase
@@ -136,7 +211,7 @@ export async function getAllPostSlugs(): Promise<{ slug: string }[]> {
     return posts?.map(({ slug }) => ({ slug })) || [];
 }
 
-export async function getPaginatedPosts(
+async function fetchPaginatedPosts(
     offset: number,
     limit: number,
     tagSlug?: string
@@ -146,7 +221,7 @@ export async function getPaginatedPosts(
 
     let query = supabase
         .from("posts")
-        .select(POSTS_WITH_TAGS_SELECT)
+        .select(POST_FEED_SELECT)
         .eq("is_published", true)
         .order("published_at", { ascending: false })
         // Fetch one extra row so we can answer hasMore without a count query.
@@ -187,6 +262,15 @@ export async function getPaginatedPosts(
     };
 }
 
+// Cross-request cache keyed by (offset, limit, tagSlug). First page
+// (homepage SSR) is the hot entry; deeper scroll pages get cached too
+// as users reach them. 10-min TTL matches ingest cadence (2x daily).
+export const getPaginatedPosts = unstable_cache(
+    fetchPaginatedPosts,
+    ["paginated-posts"],
+    { revalidate: 600, tags: ["posts"] }
+);
+
 export async function getPaginatedTags(
     offset: number,
     limit: number
@@ -194,47 +278,8 @@ export async function getPaginatedTags(
     const safeOffset = Math.max(0, offset || 0);
     const safeLimit = Math.min(Math.max(1, limit || 10), 50);
 
-    const { data: tagData, error } = await supabase
-        .from("tags")
-        .select("id, name, slug")
-        .order("name");
-
-    if (error || !tagData) {
-        console.error("Error fetching tags:", error);
-        return { tags: [], hasMore: false };
-    }
-
-    const tags = tagData as unknown as Tag[];
-
-    const tagIds = tags.map((t) => t.id);
-    if (tagIds.length === 0) {
-        return { tags: [], hasMore: false };
-    }
-
-    const { data: linkData, error: linkErr } = await supabase
-        .from("post_tags")
-        .select("tag_id, posts!inner(id)")
-        .in("tag_id", tagIds)
-        .eq("posts.is_published", true);
-
-    if (linkErr) {
-        console.error("Error fetching tag counts:", linkErr);
-        return { tags: [], hasMore: false };
-    }
-
-    const countMap = new Map<string, number>();
-    for (const link of linkData || []) {
-        const tagId = String(link.tag_id);
-        countMap.set(tagId, (countMap.get(tagId) || 0) + 1);
-    }
-
-    const tagsWithCounts: TagWithCount[] = tags
-        .map((tag) => ({
-            tag,
-            count: countMap.get(String(tag.id)) || 0,
-        }))
-        .filter((t) => t.count > 0)
-        .sort((a, b) => b.count - a.count || a.tag.name.localeCompare(b.tag.name));
+    // Reuses the cached full tag list — no extra DB hit on cache hit.
+    const tagsWithCounts = await getTagsWithPostCounts();
 
     const paginated = tagsWithCounts.slice(safeOffset, safeOffset + safeLimit + 1);
     const hasMore = paginated.length > safeLimit;

@@ -56,7 +56,6 @@ export default function TopicsList({
             });
             const res = await fetch(`/api/tags?${params.toString()}`, {
               method: "GET",
-              cache: "no-store",
             });
             if (!res.ok) {
               setHasMore(false);

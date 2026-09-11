@@ -7,7 +7,7 @@ import { formatDate, formatSource } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
 
-export const revalidate = 120;
+export const revalidate = 600;
 
 export async function generateStaticParams() {
   return await getAllPostSlugs();

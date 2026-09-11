@@ -119,7 +119,6 @@ export default function PostFeed({
             }
             const res = await fetch(`/api/posts?${params.toString()}`, {
               method: "GET",
-              cache: "no-store",
             });
             if (!res.ok) {
               setHasMore(false);

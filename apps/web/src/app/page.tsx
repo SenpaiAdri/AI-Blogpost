@@ -10,7 +10,9 @@ import {
 import type { Metadata } from "next";
 import { Suspense } from "react";
 
-export const revalidate = 120;
+// Ingest runs 2x daily, so a 10-min ISR window is safe and cuts
+// Supabase regenerations ~5x vs the old 120s.
+export const revalidate = 600;
 
 const PAGE_SIZE = 10;
 

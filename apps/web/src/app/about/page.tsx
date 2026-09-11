@@ -18,10 +18,10 @@ export default function About() {
 				<main
 					className="w-full border-x-2 border-[#6A6B70] border-dashed min-h-screen pt-19 pb-10
                     sm:pb-20 sm:pt-21
-                    md:pt-19"
+                    md:pt-18"
 				>
 					{/* ── HERO: Giant typography ── */}
-					<section className="relative overflow-hidden px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 py-16 sm:py-24 lg:py-32">
+					<section className="relative overflow-hidden px-6 sm:px-10 md:px-16 lg:px-24 xl:px-32 py-16 sm:py-24">
 						{/* grid background */}
 						<div
 							className="absolute inset-0 opacity-[0.15] pointer-events-none"
