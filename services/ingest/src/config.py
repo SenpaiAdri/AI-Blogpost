@@ -15,6 +15,19 @@ def _bool_env(name: str, default: str) -> bool:
     return os.getenv(name, default).strip().lower() in ("1", "true", "yes")
 
 
+def _str_env(name: str, default: str) -> str:
+    # Empty counts as unset: GitHub Actions expands undefined secrets to "".
+    return os.getenv(name, default) or default
+
+
+def _int_env(name: str, default: str) -> int:
+    return int(_str_env(name, default))
+
+
+def _float_env(name: str, default: str) -> float:
+    return float(_str_env(name, default))
+
+
 # ============================================================================
 # DEDUPLICATION SETTINGS
 # ============================================================================
@@ -163,3 +176,40 @@ VERBOSE_LOGGING = _bool_env("VERBOSE_LOGGING", "0")
 
 # Enable fuzzy deduplication (disable for testing)
 ENABLE_FUZZY_DEDUP = _bool_env("ENABLE_FUZZY_DEDUP", "1")
+
+# ============================================================================
+# AI COMMENTS (separate selective pipeline: recent posts -> scored comments)
+# ============================================================================
+# Runs via src/comments/runner.py on its own schedule (see
+# .github/workflows/ai-comments.yml). Frequency is the cost control, so these
+# share the global DAILY_BUDGET_LIMIT / cost_tracker instead of a separate cap.
+
+# Models: default to the same OpenRouter primary/fallback chain as posts.
+COMMENTS_MODEL = _str_env("COMMENTS_MODEL", OPENROUTER_PRIMARY_MODEL)
+COMMENTS_FALLBACK_MODEL = _str_env("COMMENTS_FALLBACK_MODEL", OPENROUTER_FALLBACK_MODEL)
+
+# Generation parameters (shorter + slightly warmer than full posts).
+# 1000 tokens of headroom: reasoning models can burn several hundred tokens
+# on reasoning before emitting content; 600 starved them (empty, length-cut).
+COMMENTS_MAX_TOKENS = _int_env("COMMENTS_MAX_TOKENS", "1000")
+COMMENTS_TEMPERATURE = _float_env("COMMENTS_TEMPERATURE", "0.8")
+COMMENTS_SCORE_MAX_TOKENS = _int_env("COMMENTS_SCORE_MAX_TOKENS", "300")
+
+# Chars of post content passed to the model per call.
+COMMENTS_CONTEXT_CHARS = _int_env("COMMENTS_CONTEXT_CHARS", "3000")
+
+# Selection: scan recent posts, score 0-10, comment only above threshold.
+COMMENTS_LOOKBACK_HOURS = _int_env("COMMENTS_LOOKBACK_HOURS", "72")
+COMMENTS_MAX_POSTS = _int_env("COMMENTS_MAX_POSTS", "10")
+COMMENTS_MAX_COMMENTS = _int_env("COMMENTS_MAX_COMMENTS", "3")
+COMMENTS_THRESHOLD = _float_env("COMMENTS_THRESHOLD", "7.0")
+
+# Circuit breaker: stop the run after this many provider/DB errors in a row
+# (429 storms, persistent empties). Skips and comments reset the counter.
+COMMENTS_MAX_CONSECUTIVE_ERRORS = _int_env("COMMENTS_MAX_CONSECUTIVE_ERRORS", "3")
+
+# Display name stored on AI comment rows.
+COMMENTS_AUTHOR_NAME = _str_env("COMMENTS_AUTHOR_NAME", "Critic AI")
+
+# Dry run: score + generate but skip DB inserts (audit log still records).
+COMMENTS_DRY_RUN = _bool_env("COMMENTS_DRY_RUN", "0")

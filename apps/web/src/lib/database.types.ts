@@ -6,221 +6,316 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
-export interface Database {
+export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "14.5"
+  }
   public: {
     Tables: {
-      posts: {
+      ai_generation_logs: {
         Row: {
-          id: string
           created_at: string
-          slug: string
-          title: string
-          tldr: string[] | null
-          content: string | null
-          excerpt: string | null
-          cover_image: string | null
-          is_published: boolean
-          published_at: string | null
-          source_url: Json | null
-          ai_model: string | null
+          failure_reason: string | null
+          id: string
+          output_json: Json | null
+          selected_model: string | null
+          source_name: string
+          source_url: string
+          status: string
+          topic: string
+          validated: boolean
         }
         Insert: {
-          id?: string
           created_at?: string
-          slug: string
-          title: string
-          tldr?: string[] | null
-          content?: string | null
-          excerpt?: string | null
-          cover_image?: string | null
-          is_published?: boolean
-          published_at?: string | null
-          source_url?: Json | null
-          ai_model?: string | null
+          failure_reason?: string | null
+          id?: string
+          output_json?: Json | null
+          selected_model?: string | null
+          source_name: string
+          source_url: string
+          status: string
+          topic: string
+          validated?: boolean
         }
         Update: {
-          id?: string
           created_at?: string
-          slug?: string
-          title?: string
-          tldr?: string[] | null
-          content?: string | null
-          excerpt?: string | null
-          cover_image?: string | null
-          is_published?: boolean
-          published_at?: string | null
-          source_url?: Json | null
-          ai_model?: string | null
+          failure_reason?: string | null
+          id?: string
+          output_json?: Json | null
+          selected_model?: string | null
+          source_name?: string
+          source_url?: string
+          status?: string
+          topic?: string
+          validated?: boolean
         }
         Relationships: []
       }
-      tags: {
+      comments: {
         Row: {
-          id: number
+          ai_model: string | null
+          author_name: string | null
+          author_type: string
+          author_user_id: string | null
+          body: string
           created_at: string
-          name: string
-          slug: string
+          id: string
+          moderated_at: string | null
+          moderated_by: string | null
+          parent_id: string | null
+          post_id: string
+          status: string
         }
         Insert: {
-          id?: number
+          ai_model?: string | null
+          author_name?: string | null
+          author_type: string
+          author_user_id?: string | null
+          body: string
           created_at?: string
-          name: string
-          slug: string
+          id?: string
+          moderated_at?: string | null
+          moderated_by?: string | null
+          parent_id?: string | null
+          post_id: string
+          status?: string
         }
         Update: {
-          id?: number
+          ai_model?: string | null
+          author_name?: string | null
+          author_type?: string
+          author_user_id?: string | null
+          body?: string
           created_at?: string
-          name?: string
-          slug?: string
+          id?: string
+          moderated_at?: string | null
+          moderated_by?: string | null
+          parent_id?: string | null
+          post_id?: string
+          status?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "comments_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "comments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      post_moderation_events: {
+        Row: {
+          action: string
+          created_at: string
+          created_by: string
+          id: string
+          new_is_published: boolean
+          post_id: string
+          previous_is_published: boolean
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          created_by: string
+          id?: string
+          new_is_published: boolean
+          post_id: string
+          previous_is_published: boolean
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          new_is_published?: boolean
+          post_id?: string
+          previous_is_published?: boolean
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "post_moderation_events_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "posts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       post_tags: {
         Row: {
           post_id: string
           tag_id: number
-          created_at: string
         }
         Insert: {
           post_id: string
           tag_id: number
-          created_at?: string
         }
         Update: {
           post_id?: string
           tag_id?: number
-          created_at?: string
         }
         Relationships: [
           {
             foreignKeyName: "post_tags_post_id_fkey"
             columns: ["post_id"]
+            isOneToOne: false
             referencedRelation: "posts"
             referencedColumns: ["id"]
           },
           {
             foreignKeyName: "post_tags_tag_id_fkey"
             columns: ["tag_id"]
+            isOneToOne: false
             referencedRelation: "tags"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
-      ai_generation_logs: {
+      posts: {
         Row: {
-          id: string
+          ai_model: string | null
+          content: string | null
+          cover_image: string | null
           created_at: string
-          topic: string
-          source_name: string | null
-          source_url: string | null
-          status: string
-          selected_model: string | null
-          failure_reason: string | null
-          output_json: Json | null
-          validated: boolean
+          excerpt: string | null
+          id: string
+          is_published: boolean | null
+          published_at: string | null
+          slug: string
+          source_url: Json | null
+          title: string
+          tldr: Json | null
+          updated_at: string
         }
         Insert: {
-          id?: string
+          ai_model?: string | null
+          content?: string | null
+          cover_image?: string | null
           created_at?: string
-          topic: string
-          source_name?: string | null
-          source_url?: string | null
-          status: string
-          selected_model?: string | null
-          failure_reason?: string | null
-          output_json?: Json | null
-          validated?: boolean
+          excerpt?: string | null
+          id?: string
+          is_published?: boolean | null
+          published_at?: string | null
+          slug: string
+          source_url?: Json | null
+          title: string
+          tldr?: Json | null
+          updated_at?: string
         }
         Update: {
-          id?: string
+          ai_model?: string | null
+          content?: string | null
+          cover_image?: string | null
           created_at?: string
-          topic?: string
-          source_name?: string | null
-          source_url?: string | null
-          status?: string
-          selected_model?: string | null
-          failure_reason?: string | null
-          output_json?: Json | null
-          validated?: boolean
+          excerpt?: string | null
+          id?: string
+          is_published?: boolean | null
+          published_at?: string | null
+          slug?: string
+          source_url?: Json | null
+          title?: string
+          tldr?: Json | null
+          updated_at?: string
         }
         Relationships: []
       }
-      post_moderation_events: {
+      rss_sources: {
         Row: {
-          id: string
-          post_id: string
-          action: string
-          reason: string | null
-          previous_is_published: boolean
-          new_is_published: boolean
-          created_by: string
           created_at: string
+          error_count: number | null
+          id: string
+          is_active: boolean
+          last_fetched_at: string | null
+          name: string
+          url: string
         }
         Insert: {
-          id?: string
-          post_id: string
-          action: string
-          reason?: string | null
-          previous_is_published: boolean
-          new_is_published: boolean
-          created_by: string
           created_at?: string
+          error_count?: number | null
+          id?: string
+          is_active?: boolean
+          last_fetched_at?: string | null
+          name: string
+          url: string
         }
         Update: {
-          id?: string
-          post_id?: string
-          action?: string
-          reason?: string | null
-          previous_is_published?: boolean
-          new_is_published?: boolean
-          created_by?: string
           created_at?: string
+          error_count?: number | null
+          id?: string
+          is_active?: boolean
+          last_fetched_at?: string | null
+          name?: string
+          url?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "post_moderation_events_post_id_fkey"
-            columns: ["post_id"]
-            referencedRelation: "posts"
-            referencedColumns: ["id"]
-          }
-        ]
+        Relationships: []
+      }
+      tags: {
+        Row: {
+          id: number
+          name: string
+          slug: string
+        }
+        Insert: {
+          id?: number
+          name: string
+          slug: string
+        }
+        Update: {
+          id?: number
+          name?: string
+          slug?: string
+        }
+        Relationships: []
       }
       topic_guidance: {
         Row: {
+          created_at: string
+          created_by: string
+          deactivated_at: string | null
+          deactivated_by: string | null
+          expires_at: string
           id: string
           keyword: string
           normalized_keyword: string
-          weight: number
           status: string
-          expires_at: string
-          created_by: string
-          created_at: string
-          deactivated_by: string | null
-          deactivated_at: string | null
+          weight: number
         }
         Insert: {
+          created_at?: string
+          created_by: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          expires_at: string
           id?: string
           keyword: string
           normalized_keyword: string
-          weight?: number
           status?: string
-          expires_at: string
-          created_by: string
-          created_at?: string
-          deactivated_by?: string | null
-          deactivated_at?: string | null
+          weight?: number
         }
         Update: {
+          created_at?: string
+          created_by?: string
+          deactivated_at?: string | null
+          deactivated_by?: string | null
+          expires_at?: string
           id?: string
           keyword?: string
           normalized_keyword?: string
-          weight?: number
           status?: string
-          expires_at?: string
-          created_by?: string
-          created_at?: string
-          deactivated_by?: string | null
-          deactivated_at?: string | null
+          weight?: number
         }
         Relationships: []
       }
@@ -239,3 +334,126 @@ export interface Database {
     }
   }
 }
+
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
+
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+      Row: infer R
+    }
+    ? R
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+        Row: infer R
+      }
+      ? R
+      : never
+    : never
+
+export type TablesInsert<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Insert: infer I
+    }
+    ? I
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Insert: infer I
+      }
+      ? I
+      : never
+    : never
+
+export type TablesUpdate<
+  DefaultSchemaTableNameOrOptions extends
+    | keyof DefaultSchema["Tables"]
+    | { schema: keyof DatabaseWithoutInternals },
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+    : never) = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+      Update: infer U
+    }
+    ? U
+    : never
+  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
+    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
+        Update: infer U
+      }
+      ? U
+      : never
+    : never
+
+export type Enums<
+  DefaultSchemaEnumNameOrOptions extends
+    | keyof DefaultSchema["Enums"]
+    | { schema: keyof DatabaseWithoutInternals },
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+    : never) = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
+    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
+    : never
+
+export type CompositeTypes<
+  PublicCompositeTypeNameOrOptions extends
+    | keyof DefaultSchema["CompositeTypes"]
+    | { schema: keyof DatabaseWithoutInternals },
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+    schema: keyof DatabaseWithoutInternals
+  }
+    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+    : never) = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals
+}
+  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
+    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
+    : never
+
+export const Constants = {
+  public: {
+    Enums: {},
+  },
+} as const

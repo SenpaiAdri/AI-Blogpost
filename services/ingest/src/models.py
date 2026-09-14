@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, field_validator, model_validator
-from typing import List, Optional, Any, Dict
+from typing import List, Optional, Any, Dict, Literal
 import re
 import html
 
@@ -83,7 +83,7 @@ class PostInsertModel(BaseModel):
             self.slug = generate_safe_slug(self.title)
         else:
             self.slug = generate_safe_slug(self.slug)
-            
+
         if self.excerpt:
             self.excerpt = sanitize_text(str(self.excerpt), MAX_EXCERPT_LENGTH)
         else:
@@ -91,5 +91,48 @@ class PostInsertModel(BaseModel):
             self.excerpt = sanitize_text(self.content, MAX_EXCERPT_LENGTH)
             if len(self.content) > MAX_EXCERPT_LENGTH:
                 self.excerpt = self.excerpt[:MAX_EXCERPT_LENGTH - 3] + "..."
-            
+
+        return self
+
+
+class CommentInsertModel(BaseModel):
+    """Validation gate for AI comment inserts (mirrors public.comments)."""
+
+    post_id: str = Field(..., min_length=1)
+    parent_id: Optional[str] = None
+    author_type: Literal['human', 'ai', 'anonymous'] = 'ai'
+    author_name: Optional[str] = None
+    author_user_id: Optional[str] = None
+    body: str = Field(..., min_length=20, max_length=5000)
+    ai_model: Optional[str] = None
+    status: Literal['pending', 'approved', 'rejected', 'spam'] = 'approved'
+    moderated_by: Optional[str] = None
+    moderated_at: Optional[str] = None
+
+    @field_validator('body', mode='before')
+    @classmethod
+    def clean_body(cls, v: Any) -> str:
+        if not isinstance(v, str):
+            v = str(v)
+        # Collapse whitespace / decode entities, cap at SQL limit (5000).
+        cleaned = sanitize_text(v, 5000)
+        if len(cleaned.strip()) < 20:
+            raise ValueError("Comment body must be at least 20 characters")
+        if '![image]' in cleaned or '![' in cleaned:
+            raise ValueError("Comment body must not contain markdown images")
+        return cleaned
+
+    @field_validator('author_name', mode='before')
+    @classmethod
+    def clean_author_name(cls, v: Any) -> Optional[str]:
+        if v is None:
+            return None
+        cleaned = sanitize_text(str(v), 120)
+        return cleaned or None
+
+    @model_validator(mode='after')
+    def check_moderation_consistent(self) -> 'CommentInsertModel':
+        # Mirrors comments_moderation_consistent CHECK: pending rows carry no moderator.
+        if self.status == 'pending' and (self.moderated_by or self.moderated_at):
+            raise ValueError("Pending comments must not have moderated_by/moderated_at")
         return self

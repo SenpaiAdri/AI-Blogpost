@@ -121,3 +121,48 @@ comment on table public.rss_sources is
 
 create index if not exists rss_sources_is_active_idx
   on public.rss_sources (is_active);
+
+create table if not exists public.comments (
+  id uuid primary key default gen_random_uuid(),
+  post_id uuid not null references public.posts(id) on delete cascade,
+  parent_id uuid references public.comments(id) on delete cascade,
+  author_type text not null check (author_type in ('human', 'ai', 'anonymous')),
+  author_name text,
+  author_user_id text,
+  body text not null check (char_length(body) between 1 and 5000),
+  ai_model text,
+  status text not null default 'pending'
+    check (status in ('pending', 'approved', 'rejected', 'spam')),
+  moderated_by text,
+  moderated_at timestamptz,
+  created_at timestamptz not null default now(),
+  constraint comments_moderation_consistent check (
+    (status = 'pending' and moderated_by is null and moderated_at is null)
+    or (status in ('approved', 'rejected', 'spam'))
+  )
+);
+
+comment on table public.comments is
+  'Human/AI comments on posts. Public reads only approved rows; writes moderated via status.';
+
+create index if not exists comments_post_created_idx
+  on public.comments (post_id, created_at desc)
+  where status = 'approved';
+
+create index if not exists comments_parent_id_idx
+  on public.comments (parent_id);
+
+create index if not exists comments_status_created_idx
+  on public.comments (status, created_at desc);
+
+-- First RLS in repo: anon key is public, so enforce approved-only reads at DB level.
+alter table public.comments enable row level security;
+
+drop policy if exists comments_read_approved on public.comments;
+
+create policy comments_read_approved on public.comments
+  for select to anon using (status = 'approved');
+
+-- Raw-SQL migrations get no auto-grants: anon reads need this explicitly,
+-- otherwise the web section silently renders empty (42501).
+grant select on public.comments to anon;

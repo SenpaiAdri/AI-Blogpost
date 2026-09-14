@@ -1,11 +1,13 @@
 import Navbar from "@/components/Navbar";
 import Tags from "@/components/Tags";
 import BlogContent from "@/components/BlogContent";
+import AIDiscussion, { AIDiscussionSkeleton } from "@/components/AIDiscussion";
 import ShareButton from "@/components/ShareButton";
 import { getPostBySlug, getAllPostSlugs } from "@/lib/posts";
 import { formatDate, formatSource } from "@/lib/utils";
 import { notFound } from "next/navigation";
 import { Metadata } from "next";
+import { Suspense } from "react";
 
 export const revalidate = 600;
 
@@ -84,6 +86,10 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
             )}
 
             <BlogContent content={post.content || ""} />
+
+            <Suspense fallback={<AIDiscussionSkeleton />}>
+              <AIDiscussion postId={post.id} />
+            </Suspense>
 
             {post.source_url && post.source_url.length > 0 && (
               <div className="pt-8 border-t border-[#393A41] mt-12">

@@ -1,7 +1,7 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
-import { Post, PostRow, Tag } from "@/lib/types";
+import { Comment, Post, PostRow, Tag } from "@/lib/types";
 
 const POSTS_WITH_TAGS_SELECT = `
       *,
@@ -210,6 +210,37 @@ export async function getAllPostSlugs(): Promise<{ slug: string }[]> {
     const { data: posts } = await supabase.from("posts").select("slug");
     return posts?.map(({ slug }) => ({ slug })) || [];
 }
+
+// Top-level approved comments only (parent_id IS NULL): v1 rows are AI notes,
+// later this same feed mixes in top-level human comments with no query change.
+const COMMENT_SELECT = "id, post_id, author_type, author_name, body, ai_model, created_at";
+
+async function fetchApprovedComments(postId: string): Promise<Comment[]> {
+    if (!postId?.trim()) return [];
+
+    const { data, error } = await supabase
+        .from("comments")
+        .select(COMMENT_SELECT)
+        .eq("post_id", postId)
+        .eq("status", "approved")
+        .is("parent_id", null)
+        .order("created_at", { ascending: true });
+
+    if (error) {
+        console.error("Error fetching comments:", error);
+        return [];
+    }
+
+    return (data || []) as Comment[];
+}
+
+// Cross-request cache (10-min TTL matches ISR revalidate): comments change
+// only when the scheduled worker runs (2-3x weekly), so this is safe.
+export const getApprovedComments = unstable_cache(
+    fetchApprovedComments,
+    ["approved-comments"],
+    { revalidate: 600, tags: ["comments"] }
+);
 
 async function fetchPaginatedPosts(
     offset: number,

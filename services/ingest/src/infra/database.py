@@ -72,3 +72,48 @@ def get_active_rss_sources(client) -> list[dict]:
     except Exception as exc:
         logger.warning(f"RSS sources unavailable; continuing with hardcoded feeds: {exc}")
         return []
+
+
+def get_recent_posts(client, lookback_hours: int = 72, limit: int = 10) -> list[dict]:
+    """Fetch recently published posts for AI comment selection (Phase 0 helper)."""
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=lookback_hours)).isoformat()
+    response = (
+        client.from_("posts")
+        .select("id,slug,title,excerpt,content,published_at")
+        .eq("is_published", True)
+        .gte("published_at", cutoff)
+        .order("published_at", desc=True)
+        .limit(limit)
+        .execute()
+    )
+    return response.data or []
+
+
+def has_approved_ai_comment(client, post_id: str) -> bool:
+    """Idempotency check: True if post already has an approved AI comment."""
+    response = (
+        client.from_("comments")
+        .select("id")
+        .eq("post_id", post_id)
+        .eq("author_type", "ai")
+        .eq("status", "approved")
+        .limit(1)
+        .execute()
+    )
+    return len(response.data or []) > 0
+
+
+def get_approved_ai_commented_post_ids(client, post_ids: list) -> set:
+    """Batch idempotency check: post IDs with an approved AI comment (one query)."""
+    ids = [str(pid) for pid in (post_ids or []) if pid]
+    if not ids:
+        return set()
+    response = (
+        client.from_("comments")
+        .select("post_id")
+        .in_("post_id", ids)
+        .eq("author_type", "ai")
+        .eq("status", "approved")
+        .execute()
+    )
+    return {str(row.get("post_id")) for row in (response.data or []) if row.get("post_id")}
