@@ -39,7 +39,7 @@ export default function BrutalBlock({
   return (
     <div
       ref={ref}
-      className={`border-2 border-dashed transition-all duration-700 ${visible
+      className={`border-2 border-dashed transition-[opacity,transform] duration-700 ${visible
         ? "opacity-100 translate-y-0"
         : "opacity-0 translate-y-8"
         } ${accent
