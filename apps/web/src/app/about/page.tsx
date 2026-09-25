@@ -233,11 +233,19 @@ export default function About() {
 								lg:w-60 lg:h-60">
 									<a href="https://eydriannn.vercel.app/" target="_blank" rel="noopener noreferrer">
 										<Image
+											src="/my_logo_nobg_dark.svg"
+											alt="Creator"
+											width={160}
+											height={160}
+											className="hidden object-contain object-left cursor-pointer hover:scale-105 transition-all duration-300 dark:block"
+											unoptimized
+										/>
+										<Image
 											src="/my_logo_nobg_light.svg"
 											alt="Creator"
 											width={160}
 											height={160}
-											className="object-contain object-left cursor-pointer hover:scale-105 transition-all duration-300"
+											className="object-contain object-left cursor-pointer hover:scale-105 transition-all duration-300 dark:hidden"
 											unoptimized
 										/>
 									</a>
