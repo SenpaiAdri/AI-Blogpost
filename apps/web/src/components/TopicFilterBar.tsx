@@ -48,14 +48,14 @@ export default function TopicFilterBar({
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#6A6B70] shrink-0">
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-ink-faint shrink-0">
           Topics
         </span>
         <TransitionLink
           href="/"
           className={`text-xs font-semibold uppercase tracking-wide px-3 py-1.5 rounded-full border border-dashed transition-colors ${!activeSlug
-            ? "border-red-500 text-red-400 bg-red-500/10"
-            : "border-[#393A41] text-[#9A9BA2] hover:border-[#6A6B70] hover:text-white"
+            ? "border-brand text-brand bg-brand/10"
+            : "border-line text-ink-body hover:border-line-strong hover:text-ink-bright"
             }`}
         >
           All
@@ -67,12 +67,12 @@ export default function TopicFilterBar({
               key={String(tag.id)}
               href={`/?tag=${encodeURIComponent(tag.slug)}`}
               className={`text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${isActive
-                ? "border-red-500 text-red-400 bg-red-500/10"
-                : "border-[#3e3e44] text-[#E7E7E7] bg-[#2c2c31] hover:border-red-400/60"
+                ? "border-brand text-brand bg-brand/10"
+                : "border-line text-ink-strong bg-surface-3 hover:border-brand/60"
                 }`}
             >
               {tag.name}
-              <span className="ml-1 text-[#6A6B70] tabular-nums">{count}</span>
+              <span className="ml-1 text-ink-faint tabular-nums">{count}</span>
             </TransitionLink>
           );
         })}
@@ -80,7 +80,7 @@ export default function TopicFilterBar({
           <button
             type="button"
             onClick={() => setExpanded(true)}
-            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-dashed border-[#393A41] text-[#9A9BA2] hover:border-[#6A6B70] hover:text-red-300 transition-colors uppercase tracking-wide"
+            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-dashed border-line text-ink-body hover:border-line-strong hover:text-brand transition-colors uppercase tracking-wide"
           >
             +{tags.length - displayTags.length} more
           </button>
@@ -89,14 +89,14 @@ export default function TopicFilterBar({
           <button
             type="button"
             onClick={() => setExpanded(false)}
-            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-dashed border-[#393A41] text-[#9A9BA2] hover:border-[#6A6B70] hover:text-white transition-colors uppercase tracking-wide"
+            className="text-xs font-semibold px-3 py-1.5 rounded-full border border-dashed border-line text-ink-body hover:border-line-strong hover:text-ink-bright transition-colors uppercase tracking-wide"
           >
             Show less
           </button>
         )}
         <TransitionLink
           href="/topics"
-          className="text-xs font-semibold text-[#6A6B70] hover:text-red-400 transition-colors ml-1 uppercase tracking-wide"
+          className="text-xs font-semibold text-ink-faint hover:text-brand transition-colors ml-1 uppercase tracking-wide"
         >
           All topics →
         </TransitionLink>

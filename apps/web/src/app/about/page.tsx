@@ -12,11 +12,11 @@ import { Scan } from "lucide-react";
 export default function About() {
 
 	return (
-		<div className="min-h-screen w-full bg-[#131316] text-white">
+		<div className="min-h-screen w-full bg-surface text-ink-bright">
 			<Navbar />
 			<div className="w-full flex justify-center">
 				<main
-					className="w-full border-x-2 border-[#6A6B70] border-dashed min-h-screen pt-19 pb-10
+					className="w-full border-x-2 border-line-strong border-dashed min-h-screen pt-19 pb-10
                     sm:pb-20 sm:pt-21
                     md:pt-18"
 				>
@@ -27,8 +27,8 @@ export default function About() {
 							className="absolute inset-0 opacity-[0.15] pointer-events-none"
 							style={{
 								backgroundImage: `
-                                    linear-gradient(to right, #6A6B70 1px, transparent 1px),
-                                    linear-gradient(to bottom, #6A6B70 1px, transparent 1px)
+                                    linear-gradient(to right, var(--line-strong) 1px, transparent 1px),
+                                    linear-gradient(to bottom, var(--line-strong) 1px, transparent 1px)
                                 `,
 								backgroundSize: "80px 80px",
 							}}
@@ -36,7 +36,7 @@ export default function About() {
 
 						<div className="relative z-10 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-8 lg:gap-16">
 							<div className="w-full lg:w-auto lg:flex-1">
-								<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#6A6B70] 
+								<p className="text-[10px] font-bold uppercase tracking-[0.3em] text-ink-faint 
 								sm:text-xs
 								mb-4 sm:mb-6
 								lg:text-sm">
@@ -47,7 +47,7 @@ export default function About() {
 								md:text-[120px]
 								lg:text-[160px]
 								xl:text-[200px]">
-									<span className="block text-white">AI</span>
+									<span className="block text-ink-bright">AI</span>
 								</h1>
 								<h1 className="text-6xl font-bold uppercase leading-[0.82] tracking-tighter
 								sm:text-8xl
@@ -56,7 +56,7 @@ export default function About() {
 								xl:text-[200px]">
 									<span
 										className="block text-transparent"
-										style={{ WebkitTextStroke: "2px #FF0000" }}
+										style={{ WebkitTextStroke: "2px var(--brand)" }}
 									>
 										BLOG
 									</span>
@@ -66,16 +66,16 @@ export default function About() {
 								md:text-[120px]
 								lg:text-[160px]
 								xl:text-[200px]">
-									<span className="block text-[#FF0000]">POST</span>
+									<span className="block text-brand">POST</span>
 								</h1>
 							</div>
 
 							<div className="lg:max-w-md lg:pb-4">
 								<div className="flex items-start gap-4 
 								sm:gap-6">
-									<div className="w-16 border-t-2 border-dashed border-red-500 mt-3 shrink-0
+									<div className="w-16 border-t-2 border-dashed border-brand mt-3 shrink-0
 									sm:w-20" />
-									<p className="text-sm text-[#808080] leading-relaxed 
+									<p className="text-sm text-ink-muted leading-relaxed 
 									sm:text-base
 									lg:text-lg">
 										An autonomous, AI-powered site that reads 25+ RSS
@@ -88,7 +88,7 @@ export default function About() {
 						</div>
 
 						{/* Corner markers — dashed */}
-						<div className="absolute top-6 right-6 sm:top-8 sm:right-10 text-[#393A41]">
+						<div className="absolute top-6 right-6 sm:top-8 sm:right-10 text-line">
 							<Scan className="w-10 h-10" />
 						</div>
 					</section>
@@ -106,16 +106,16 @@ export default function About() {
 						<BrutalBlock label="MISSION" accent delay={0}>
 							<div className="flex flex-col gap-6
 							lg:flex-row lg:items-center lg:justify-between lg:gap-16">
-								<p className="text-2xl font-bold text-white leading-tight tracking-tight
+								<p className="text-2xl font-bold text-ink-bright leading-tight tracking-tight
 								sm:text-3xl
 								md:text-4xl
 								lg:text-5xl">
 									We believe tech news should be
-									<span className="text-red-500"> accessible</span>,
-									<span className="text-red-500"> concise</span>, and
-									<span className="text-red-500"> autonomous</span>.
+									<span className="text-brand"> accessible</span>,
+									<span className="text-brand"> concise</span>, and
+									<span className="text-brand"> autonomous</span>.
 								</p>
-								<p className="text-sm sm:text-base text-[#808080] leading-relaxed lg:max-w-md shrink-0">
+								<p className="text-sm sm:text-base text-ink-muted leading-relaxed lg:max-w-md shrink-0">
 									No editorial bias. No information overload. Models read across
 									25+ feeds, filter for AI and software-engineering stories,
 									and turn them into clear posts — published automatically
@@ -168,14 +168,14 @@ export default function About() {
 										},
 									].map((item) => (
 										<div key={item.step} className="flex gap-4 group">
-											<span className="text-3xl sm:text-4xl lg:text-5xl font-bold text-[#393A41] group-hover:text-red-400 transition-colors leading-none tracking-tighter">
+											<span className="text-3xl sm:text-4xl lg:text-5xl font-bold text-line group-hover:text-brand transition-colors leading-none tracking-tighter">
 												{item.step}
 											</span>
 											<div>
-												<p className="text-sm sm:text-base font-bold text-white uppercase tracking-wider">
+												<p className="text-sm sm:text-base font-bold text-ink-bright uppercase tracking-wider">
 													{item.title}
 												</p>
-												<p className="text-xs sm:text-sm text-[#808080] mt-1 leading-relaxed">
+												<p className="text-xs sm:text-sm text-ink-muted mt-1 leading-relaxed">
 													{item.desc}
 												</p>
 											</div>
@@ -196,15 +196,15 @@ export default function About() {
 										].map((line, i) => (
 											<p
 												key={i}
-												className="text-sm sm:text-base lg:text-lg font-bold text-white flex items-center gap-3"
+												className="text-sm sm:text-base lg:text-lg font-bold text-ink-bright flex items-center gap-3"
 											>
-												<span className="w-2.5 h-2.5 bg-red-400 shrink-0" />
+												<span className="w-2.5 h-2.5 bg-brand shrink-0" />
 												{line}
 											</p>
 										))}
 									</div>
-									<div className="border-t border-dashed border-[#393A41] pt-5">
-										<p className="text-xs sm:text-sm text-[#6A6B70] leading-relaxed">
+									<div className="border-t border-dashed border-line pt-5">
+										<p className="text-xs sm:text-sm text-ink-faint leading-relaxed">
 											This project exists to prove a simple thesis: AI can manage an
 											entire content pipeline — from discovery to publication — without
 											any human in the loop. Every post you read here was written,
@@ -227,7 +227,7 @@ export default function About() {
 					xl:px-32">
 						<BrutalBlock label="CREATOR" accent delay={0}>
 							<div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 sm:gap-10 lg:gap-16">
-								<div className="w-20 h-20 border-2 border-dashed border-red-400 flex items-center justify-center shrink-0 bg-red-400/5
+								<div className="w-20 h-20 border-2 border-dashed border-brand flex items-center justify-center shrink-0 bg-brand/5
 								sm:w-24 sm:h-24 
 								md:w-40 md:h-40 
 								lg:w-60 lg:h-60">
@@ -243,13 +243,13 @@ export default function About() {
 									</a>
 								</div>
 								<div>
-									<p className="text-xl sm:text-2xl lg:text-3xl font-bold text-white tracking-tight">
+									<p className="text-xl sm:text-2xl lg:text-3xl font-bold text-ink-bright tracking-tight">
 										Adrian M. De Guzman
 									</p>
-									<p className="text-xs sm:text-sm uppercase tracking-[0.15em] text-gray-400 font-bold mb-3">
+									<p className="text-xs sm:text-sm uppercase tracking-[0.15em] text-ink-muted font-bold mb-3">
 										Full-Stack Developer
 									</p>
-									<p className="text-sm sm:text-base text-gray-300 leading-relaxed max-w-4xl text-justify">
+									<p className="text-sm sm:text-base text-ink-body leading-relaxed max-w-4xl text-justify">
 										This project is built out of curiosity as i found other developer has a blog post integrated to their portfolio.
 										So I thought, why not we make a blog post that is autonomous and can be published by an AI system.
 										And so this is how the project started.
@@ -263,18 +263,18 @@ export default function About() {
 					</section>
 
 					{/* ── Footer ── */}
-					<div className="border-t-2 border-dashed border-[#6A6B70] px-6 py-6
+					<div className="border-t-2 border-dashed border-line-strong px-6 py-6
 					sm:px-10 sm:py-8
 					md:px-16 
 					lg:px-24 lg:py-10
 					xl:px-32
 					flex flex-col sm:flex-row items-center justify-between gap-4">
-						<p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#6A6B70]">
+						<p className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-ink-faint">
 							© 2026 AI Blogpost — All systems autonomous
 						</p>
 						<TransitionLink
 							href="/"
-							className="text-xs sm:text-sm font-bold text-[#6A6B70] hover:text-red-400 transition-colors inline-flex items-center gap-2 uppercase tracking-wider"
+							className="text-xs sm:text-sm font-bold text-ink-faint hover:text-brand transition-colors inline-flex items-center gap-2 uppercase tracking-wider"
 						>
 							<svg
 								className="w-4 h-4 rotate-180"

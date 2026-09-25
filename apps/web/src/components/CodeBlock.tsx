@@ -44,11 +44,11 @@ export default function CodeBlock({ children, className }: CodeBlockProps) {
 
   return (
     <div className="relative group my-4">
-      <div className="flex items-center justify-between bg-[#1a1a1a] border border-[#393A41] rounded-t-lg px-4 py-2">
-        <span className="text-xs text-gray-400 font-mono">{languageLabel}</span>
+      <div className="flex items-center justify-between bg-surface-2 border border-line rounded-t-lg px-4 py-2">
+        <span className="text-xs text-ink-muted font-mono">{languageLabel}</span>
         <button
           onClick={handleCopy}
-          className="text-xs text-gray-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+          className="text-xs text-ink-faint hover:text-ink-bright transition-colors opacity-0 group-hover:opacity-100"
         >
           {copied ? 'Copied!' : 'Copy'}
         </button>

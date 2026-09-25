@@ -5,7 +5,7 @@ import { useState } from "react";
 import TransitionLink from "./TransitionLink";
 
 const chipClass =
-  "text-xs font-medium text-[#E7E7E7] bg-[#2c2c31] border border-[#3e3e44] px-2.5 py-1 rounded-full whitespace-nowrap";
+  "text-xs font-medium text-ink-strong bg-surface-3 border border-line px-2.5 py-1 rounded-full whitespace-nowrap";
 
 export default function Tags({
   tags,
@@ -35,7 +35,7 @@ export default function Tags({
             key={String(tag.id)}
             href={`/?tag=${encodeURIComponent(tag.slug)}`}
             onClick={(e) => e.stopPropagation()}
-            className={`${chipClass} hover:border-red-400/50 hover:text-red-300 transition-colors`}
+            className={`${chipClass} hover:border-brand/50 hover:text-brand transition-colors`}
           >
             {tag.name}
           </TransitionLink>
@@ -52,7 +52,7 @@ export default function Tags({
             e.stopPropagation();
             setShowAll(true);
           }}
-          className={`${chipClass} text-[#9A9BA2] border-dashed hover:border-red-400/50 hover:text-red-300 cursor-pointer`}
+          className={`${chipClass} text-ink-body border-dashed hover:border-brand/50 hover:text-brand cursor-pointer`}
         >
           +{rest} more
         </button>

@@ -49,11 +49,11 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
   }
 
   return (
-    <div className="min-h-screen w-full bg-[#131316] text-white">
+    <div className="min-h-screen w-full bg-surface text-ink-bright">
       <Navbar />
 
       <div className="w-full flex justify-center">
-        <main className="w-full max-w-4xl sm:border-x-2 sm:border-[#6A6B70] sm:border-dashed min-h-screen pt-24 px-6 sm:px-8 pb-20">
+        <main className="w-full max-w-4xl sm:border-x-2 sm:border-line-strong sm:border-dashed min-h-screen pt-24 px-6 sm:px-8 pb-20">
           <div className="max-w-3xl mx-auto space-y-5">
             <header className="space-y-4">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight">
@@ -63,7 +63,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
               <div className="flex flex-wrap gap-4 items-center justify-between">
                 <Tags tags={post.tags || []} linkable />
                 <div className="flex items-center gap-4">
-                  <span className="text-gray-400 text-sm">
+                  <span className="text-ink-muted text-sm">
                     {formatDate(post.published_at)}
                   </span>
                   <ShareButton slug={slug} />
@@ -73,10 +73,10 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
 
             {post.tldr && post.tldr.length > 0 && (
               <div className="px-4">
-                <p className="text-xs sm:text-sm font-bold text-[#808080] my-2">TL;DR</p>
+                <p className="text-xs sm:text-sm font-bold text-ink-muted my-2">TL;DR</p>
                 <ul className="space-y-2">
                   {post.tldr.map((item: string, index: number) => (
-                    <li key={index} className="flex items-start text-white text-sm sm:text-base">
+                    <li key={index} className="flex items-start text-ink-bright text-sm sm:text-base">
                       <span className="mr-2">•</span>
                       <span>{item}</span>
                     </li>
@@ -92,10 +92,10 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
             </Suspense>
 
             {post.source_url && post.source_url.length > 0 && (
-              <div className="pt-8 border-t border-[#393A41] mt-12">
+              <div className="pt-8 border-t border-line mt-12">
                 {post.source_url.length > 1 ? (
-                  <h3 className="text-sm font-bold text-gray-400 mb-3">Sources:</h3>)
-                  : (<h3 className="text-sm font-bold text-gray-400 mb-3">Source:</h3>)
+                  <h3 className="text-sm font-bold text-ink-muted mb-3">Sources:</h3>)
+                  : (<h3 className="text-sm font-bold text-ink-muted mb-3">Source:</h3>)
                 }
 
                 <div className="flex flex-wrap gap-3">
@@ -107,12 +107,12 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                         href={url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-blue-400 hover:text-blue-300 text-sm bg-[#26262C] px-3 py-1.5 rounded-4xl transition-colors"
+                        className="text-blue-400 hover:text-blue-300 text-sm bg-surface-3 px-3 py-1.5 rounded-4xl transition-colors"
                       >
                         {name} ↗
                       </a>
                     ) : (
-                      <span key={i} className="text-gray-500 text-sm px-3 py-1.5 border border-[#393A41] rounded-md">{name}</span>
+                      <span key={i} className="text-ink-faint text-sm px-3 py-1.5 border border-line rounded-md">{name}</span>
                     );
                   })}
                 </div>

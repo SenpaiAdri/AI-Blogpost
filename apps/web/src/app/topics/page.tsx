@@ -18,21 +18,21 @@ export const metadata: Metadata = {
 
 export default async function TopicsPage() {
   return (
-    <div className="min-h-screen w-full bg-[#131316] text-white">
+    <div className="min-h-screen w-full bg-surface text-ink-bright">
       <Navbar />
       <div className="w-full flex justify-center">
         <main
-          className="w-full max-w-4xl border-x-2 border-[#6A6B70] border-dashed min-h-screen pt-24 px-4 sm:px-8 pb-20
+          className="w-full max-w-4xl border-x-2 border-line-strong border-dashed min-h-screen pt-24 px-4 sm:px-8 pb-20
         md:pt-28"
         >
           <header className="max-w-2xl mb-10 space-y-3">
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-[#6A6B70]">
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-ink-faint">
               [TOPICS]
             </p>
             <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
               Browse by topic
             </h1>
-            <p className="text-sm text-[#9A9BA2] leading-relaxed">
+            <p className="text-sm text-ink-body leading-relaxed">
               Each tag links to posts that mention that theme. Counts reflect
               published articles only.
             </p>
@@ -45,7 +45,7 @@ export default async function TopicsPage() {
           <p className="mt-12 text-center">
             <TransitionLink
               href="/"
-              className="text-sm font-bold uppercase tracking-wider text-[#6A6B70] hover:text-red-400 transition-colors"
+              className="text-sm font-bold uppercase tracking-wider text-ink-faint hover:text-brand transition-colors"
             >
               ← Back to all posts
             </TransitionLink>

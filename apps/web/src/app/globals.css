@@ -1,26 +1,180 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #131316;
-  --foreground: #131316;
+  color-scheme: light;
+
+  --surface: #faf3e7;
+  --surface-2: #fffdf6;
+  --surface-3: #efe4cd;
+  --marquee-stroke: #c9b896;
+  --carousel-dot: #d8cab4;
+
+  --ink-faint: #a8a29e; /* placeholders */
+  --ink-muted: #78716c; /* muted text, nav, headings */
+  --ink-body: #57534e; /* body text */
+  --ink-strong: #44403c; /* emphasis text */
+  --ink-bright: #292524; /* brightest text */
+  --line: #d8cab4; /* dashed divider borders */
+  --line-strong: #c9b896; /* page rails, emphasis borders */
+  --shade: rgba(122, 106, 83, 0.1); /* warm vignette wash */
+  --track: rgba(0, 0, 0, 0.1); /* contribution graph level-0 swatch */
+  --brand: #9b7c39; /* site accent */
+  --brand-hover: #9b7c39; /* accent hover */
+  --brand-grid: rgba(220, 38, 38, 0.1); /* red grid backdrops */
+  --brand-grid-soft: rgba(220, 38, 38, 0.08); /* faint red grid (footer) */
+  --background: oklch(0.97 0.02 95);
+  --foreground: oklch(0.3 0.025 70);
+  --card: oklch(0.99 0.01 95);
+  --card-foreground: oklch(0.3 0.025 70);
+  --popover: oklch(0.99 0.01 95);
+  --popover-foreground: oklch(0.3 0.025 70);
+  --primary: oklch(0.35 0.02 70);
+  --primary-foreground: oklch(0.99 0.01 95);
+  --secondary: oklch(0.93 0.02 85);
+  --secondary-foreground: oklch(0.3 0.025 70);
+  --muted: oklch(0.93 0.02 85);
+  --muted-foreground: oklch(0.52 0.03 75);
+  --accent: oklch(0.93 0.02 85);
+  --accent-foreground: oklch(0.3 0.025 70);
+  --destructive: oklch(0.58 0.22 27);
+  --border: oklch(0.86 0.03 85);
+  --input: oklch(0.86 0.03 85);
+  --ring: oklch(0.65 0.03 75);
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.99 0.01 95);
+  --sidebar-foreground: oklch(0.3 0.025 70);
+  --sidebar-primary: oklch(0.35 0.02 70);
+  --sidebar-primary-foreground: oklch(0.99 0.01 95);
+  --sidebar-accent: oklch(0.93 0.02 85);
+  --sidebar-accent-foreground: oklch(0.3 0.025 70);
+  --sidebar-border: oklch(0.86 0.03 85);
+  --sidebar-ring: oklch(0.65 0.03 75);
+}
+
+.dark {
+  color-scheme: dark;
+
+  /* Dark counterparts — current site palette, kept as-is. */
+  --surface: #131316;
+  --surface-2: #1a1a1f;
+  --surface-3: #26262c;
+  --marquee-stroke: #6a6b70;
+  --carousel-dot: #4a4a4a;
+
+  --ink-faint: #6a6b70;
+  --ink-muted: #808080;
+  --ink-body: #9a9ba2;
+  --ink-strong: #e7e7e7;
+  --ink-bright: #ffffff;
+  --line: #393a41;
+  --line-strong: #6a6b70;
+  --shade: rgba(0, 0, 0, 0.2);
+  --track: rgba(255, 255, 255, 0.07);
+  --brand: #dc2626;
+  --brand-hover: #ef4444;
+  --brand-grid: rgba(220, 38, 38, 0.1);
+  --brand-grid-soft: rgba(220, 38, 38, 0.08);
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.87 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.371 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.809 0.105 251.813);
+  --chart-2: oklch(0.623 0.214 259.815);
+  --chart-3: oklch(0.546 0.245 262.881);
+  --chart-4: oklch(0.488 0.243 264.376);
+  --chart-5: oklch(0.424 0.199 265.638);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
   --font-sans: var(--font-poppins), Arial, Helvetica, sans-serif;
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-surface-3: var(--surface-3);
+  --color-marquee-stroke: var(--marquee-stroke);
+  --color-ink-faint: var(--ink-faint);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-body: var(--ink-body);
+  --color-ink-strong: var(--ink-strong);
+  --color-ink-bright: var(--ink-bright);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-shade: var(--shade);
+  --color-track: var(--track);
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
+  --color-background: var(--surface);
+  --color-foreground: var(--ink-bright);
+  --color-card: var(--surface-2);
+  --color-card-foreground: var(--ink-bright);
+  --color-popover: var(--surface-2);
+  --color-popover-foreground: var(--ink-bright);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--surface);
+  color: var(--ink-bright);
   font-family: var(--font-sans);
 }
 
@@ -52,7 +206,7 @@ body {
 
 .page-transition-strip {
   flex: 1;
-  background: #26262C;
+  background: var(--surface-3);
   transform: translateZ(0) scaleX(0);
 }
 

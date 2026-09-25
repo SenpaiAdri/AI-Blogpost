@@ -11,13 +11,13 @@ export default function BlogCard({ post }: { post: Post }) {
 
   return (
     <div
-      className="relative block p-6 border-2 border-[#393A41] border-dashed rounded-2xl
-    hover:border-red-400 transition-colors duration-200 group"
+      className="relative block p-6 border-2 border-line border-dashed rounded-2xl
+    hover:border-brand transition-colors duration-200 group bg-surface"
     >
       {/* Full-card hit target: must not wrap tag <a> links (invalid nested anchors). */}
       <TransitionLink
         href={`/blog/${post.slug}`}
-        className="absolute inset-0 z-0 block rounded-[0.875rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#131316]"
+        className="absolute inset-0 z-0 block rounded-[0.875rem] focus:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface"
         aria-label={`Read post: ${post.title}`}
       >
         <span className="sr-only">{post.title}</span>
@@ -26,8 +26,8 @@ export default function BlogCard({ post }: { post: Post }) {
       <div className="relative z-10 flex flex-col h-full pointer-events-none">
         {/* Header */}
         <h2
-          className="text-lg font-bold text-white
-          group-hover:text-red-400 transition-all group-hover:translate-x-1
+          className="text-lg font-bold text-ink-bright
+          group-hover:text-brand transition-all group-hover:translate-x-1
           sm:text-xl md:text-2xl"
         >
           {post.title}
@@ -38,7 +38,7 @@ export default function BlogCard({ post }: { post: Post }) {
           <div className="pointer-events-auto">
             <Tags tags={post.tags || []} linkable maxVisible={5} />
           </div>
-          <div className="text-xs sm:text-sm text-[#808080]">
+          <div className="text-xs sm:text-sm text-ink-muted">
             {formatDate(post.published_at)}
           </div>
         </div>
@@ -46,7 +46,7 @@ export default function BlogCard({ post }: { post: Post }) {
         {/* TL;DR Section */}
         {tldrItems.length > 0 && (
           <div className="px-4">
-            <p className="text-xs sm:text-sm font-bold text-[#808080] my-2">TL;DR</p>
+            <p className="text-xs sm:text-sm font-bold text-ink-muted my-2">TL;DR</p>
             <ul className="space-y-2">
               {tldrItems.map((item, index) => {
                 const displayText =
@@ -57,7 +57,7 @@ export default function BlogCard({ post }: { post: Post }) {
                 return (
                   <li
                     key={index}
-                    className="flex items-start text-white text-sm sm:text-base"
+                    className="flex items-start text-ink-bright text-sm sm:text-base"
                   >
                     <span className="mr-2">•</span>
                     <span>{displayText}</span>
@@ -71,7 +71,7 @@ export default function BlogCard({ post }: { post: Post }) {
         {/* Blog's Footer */}
         <div className="mt-6 flex items-center justify-between">
           {post.source_url && post.source_url.length > 0 && (
-            <div className="text-xs sm:text-sm font-medium text-[#808080] inline-flex items-center flex-wrap pointer-events-auto">
+            <div className="text-xs sm:text-sm font-medium text-ink-muted inline-flex items-center flex-wrap pointer-events-auto">
               {post.source_url.length > 1 ? (
                 <span className="mr-1">sources:</span>
               ) : (
@@ -86,7 +86,7 @@ export default function BlogCard({ post }: { post: Post }) {
                     {url ? (
                       <button
                         type="button"
-                        className="text-blue-400 hover:underline cursor-pointer group-hover:text-red-400 transition-colors"
+                        className="text-blue-400 hover:underline cursor-pointer group-hover:text-brand transition-colors"
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -96,7 +96,7 @@ export default function BlogCard({ post }: { post: Post }) {
                         {name}
                       </button>
                     ) : (
-                      <span className="text-blue-400 group-hover:text-red-400 transition-colors">
+                      <span className="text-blue-400 group-hover:text-brand transition-colors">
                         {name}
                       </span>
                     )}
@@ -105,7 +105,7 @@ export default function BlogCard({ post }: { post: Post }) {
               })}
             </div>
           )}
-          <span className="text-xs sm:text-sm font-medium text-blue-400 group-hover:text-red-400 group-hover:translate-x-1 transition-transform inline-flex items-center whitespace-nowrap">
+          <span className="text-xs sm:text-sm font-medium text-blue-400 group-hover:text-brand group-hover:translate-x-1 transition-transform inline-flex items-center whitespace-nowrap">
             Read full post
 
             <div className="relative w-4 h-4 flex items-center justify-center">

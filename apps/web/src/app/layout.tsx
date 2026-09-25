@@ -3,6 +3,9 @@ import { Poppins } from "next/font/google";
 import "./globals.css";
 import { SpeedInsights } from "@vercel/speed-insights/next"
 import PageTransitionProvider from "@/components/PageTransitionProvider";
+import ThemeProvider from "@/components/ThemeProvider";
+
+const THEME_INIT_SCRIPT = `(function(){try{var t=localStorage.getItem("ai-blogpost-theme");if(t==="light"||t==="dark"){if(t==="dark")document.documentElement.classList.add("dark");else document.documentElement.classList.remove("dark")}else if(window.matchMedia("(prefers-color-scheme: dark)").matches){document.documentElement.classList.add("dark")}else{document.documentElement.classList.remove("dark")}}catch(e){}})();`;
 
 const poppins = Poppins({
   variable: "--font-poppins",
@@ -69,9 +72,14 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={poppins.variable}>
+    <html lang="en" className={poppins.variable} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="antialiased">
-        <PageTransitionProvider>{children}</PageTransitionProvider>
+        <ThemeProvider>
+          <PageTransitionProvider>{children}</PageTransitionProvider>
+        </ThemeProvider>
         <SpeedInsights />
       </body>
     </html>

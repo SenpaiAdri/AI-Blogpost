@@ -91,7 +91,7 @@ export default function TopicsList({
 
   if (initialTags.length === 0 && allTags.length === 0) {
     return (
-      <p className="text-[#6A6B70] text-sm">
+      <p className="text-ink-faint text-sm">
         No tags yet. Run the ingest pipeline to publish posts with tags.
       </p>
     );
@@ -105,12 +105,12 @@ export default function TopicsList({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search topics..."
-          className="w-full max-w-xs px-4 py-2.5 rounded-xl border-2 border-[#393A41] border-dashed bg-[#1a1a1f] text-white placeholder-[#6A6B70]
-            focus:outline-none focus:border-red-400/70 focus:bg-[#1f1f24] transition-colors text-sm"
+          className="w-full max-w-xs px-4 py-2.5 rounded-xl border-2 border-line border-dashed bg-surface-2 text-ink-bright placeholder-ink-faint
+            focus:outline-none focus:border-brand/70 focus:bg-surface-3 transition-colors text-sm"
         />
       </div>
       {filteredTags.length === 0 ? (
-        <p className="text-[#6A6B70] text-sm">
+        <p className="text-ink-faint text-sm">
           No topics match &quot;{query}&quot;.
         </p>
       ) : (
@@ -120,13 +120,13 @@ export default function TopicsList({
               <li key={String(tag.id)}>
                 <TransitionLink
                   href={`/?tag=${encodeURIComponent(tag.slug)}`}
-                  className="flex items-center justify-between gap-4 p-4 rounded-xl border-2 border-[#393A41] border-dashed
-                    hover:border-red-400/70 hover:bg-[#1a1a1f] transition-colors group"
+                  className="flex items-center justify-between gap-4 p-4 rounded-xl border-2 border-line border-dashed
+                    hover:border-brand/70 hover:bg-surface-2 transition-colors group"
                 >
-                  <span className="font-semibold text-white group-hover:text-red-300">
+                  <span className="font-semibold text-ink-bright group-hover:text-brand">
                     {tag.name}
                   </span>
-                  <span className="text-sm tabular-nums text-[#6A6B70] group-hover:text-[#9A9BA2]">
+                  <span className="text-sm tabular-nums text-ink-faint group-hover:text-ink-body">
                     {count} post{count === 1 ? "" : "s"}
                   </span>
                 </TransitionLink>
@@ -136,8 +136,8 @@ export default function TopicsList({
           {hasMore && !query.trim() && (
             <div ref={sentinelRef} className="mt-8 flex justify-center">
               {isLoadingMore && (
-                <div className="flex items-center gap-2 text-[#6A6B70] text-sm">
-                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#393A41] border-t-red-400" />
+                <div className="flex items-center gap-2 text-ink-faint text-sm">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-line border-t-brand" />
                   Loading more...
                 </div>
               )}

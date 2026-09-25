@@ -22,15 +22,15 @@ type PostPageResponse = {
 
 export function PostCardSkeleton() {
   return (
-    <div className="relative block p-6 border-2 border-[#393A41] border-dashed rounded-2xl animate-pulse">
-      <div className="h-8 w-2/3 bg-[#26262C] rounded-md mb-4" />
-      <div className="h-4 w-1/3 bg-[#26262C] rounded mb-5" />
+    <div className="relative block p-6 border-2 border-line border-dashed rounded-2xl animate-pulse bg-surface">
+      <div className="h-8 w-2/3 bg-surface-3 rounded-md mb-4" />
+      <div className="h-4 w-1/3 bg-surface-3 rounded mb-5" />
       <div className="space-y-2">
-        <div className="h-4 w-full bg-[#26262C] rounded" />
-        <div className="h-4 w-11/12 bg-[#26262C] rounded" />
-        <div className="h-4 w-10/12 bg-[#26262C] rounded" />
+        <div className="h-4 w-full bg-surface-3 rounded" />
+        <div className="h-4 w-11/12 bg-surface-3 rounded" />
+        <div className="h-4 w-10/12 bg-surface-3 rounded" />
       </div>
-      <div className="mt-6 h-4 w-1/4 bg-[#26262C] rounded" />
+      <div className="mt-6 h-4 w-1/4 bg-surface-3 rounded" />
     </div>
   );
 }
@@ -156,14 +156,14 @@ export default function PostFeed({
 
   if (!posts.length) {
     return (
-      <div className="text-center text-gray-500 mt-16 space-y-2">
+      <div className="text-center text-ink-muted mt-16 space-y-2">
         <p>{emptyPrimary}</p>
-        <p className="text-sm text-[#6A6B70]">{emptySecondary}</p>
+        <p className="text-sm text-ink-faint">{emptySecondary}</p>
         {activeTagSlug && !tagQueryInvalid && (
           <p className="pt-4">
             <TransitionLink
               href="/"
-              className="text-sm font-bold text-red-400 hover:underline uppercase tracking-wide"
+              className="text-sm font-bold text-brand hover:underline uppercase tracking-wide"
             >
               Clear filter
             </TransitionLink>
@@ -177,13 +177,13 @@ export default function PostFeed({
     <>
       {activeTagName && !tagQueryInvalid && (
         <div className="flex flex-wrap items-baseline justify-between gap-2 px-1">
-          <h2 className="text-lg font-bold text-white">
-            <span className="text-[#6A6B70] font-semibold text-sm uppercase tracking-wider mr-2">
+          <h2 className="text-lg font-bold text-ink-bright">
+            <span className="text-ink-faint font-semibold text-sm uppercase tracking-wider mr-2">
               Topic
             </span>
             {activeTagName}
           </h2>
-          <p className="text-sm text-[#6A6B70]">
+          <p className="text-sm text-ink-faint">
             {posts.length}+ post{posts.length === 1 ? "" : "s"}
           </p>
         </div>
@@ -204,7 +204,7 @@ export default function PostFeed({
       <div ref={sentinelRef} className="h-2 w-full" aria-hidden />
 
       {!hasMore && (
-        <p className="text-center text-sm text-gray-400 px-10 sm:pt-10 sm:pb-6">{endMessage}</p>
+        <p className="text-center text-sm text-ink-muted px-10 sm:pt-10 sm:pb-6">{endMessage}</p>
       )}
     </>
   );

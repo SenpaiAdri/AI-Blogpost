@@ -42,16 +42,16 @@ export default function ShareButton({ slug }: ShareButtonProps) {
     <div className="relative inline-block" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-2 py-1.5 text-gray-400 hover:text-white transition-colors"
+        className="flex items-center gap-2 px-2 py-1.5 text-ink-muted hover:text-ink-bright transition-colors"
       >
         <Share2 size={16} />
       </button>
 
       {isOpen && (
-        <div className="group absolute right-0 mt-2 bg-[#131316] border-2 border-[#6A6B70] hover:border-red-500 border-dashed rounded-xl shadow-4xl z-10 p-1">
+        <div className="group absolute right-0 mt-2 bg-surface border-2 border-line-strong hover:border-brand border-dashed rounded-xl shadow-4xl z-10 p-1">
           <button
             onClick={handleCopyLink}
-            className="w-full text-left px-3 py-2 text-sm text-gray-300 group-hover:text-red-500 flex items-center justify-between transition-colors"
+            className="w-full text-left px-3 py-2 text-sm text-ink-body group-hover:text-brand flex items-center justify-between transition-colors"
           >
             <div className="flex items-center gap-2">
               <Link size={14} />

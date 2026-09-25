@@ -31,11 +31,11 @@ function CommentBody({ body }: { body: string }) {
     <Markdown
       remarkPlugins={[remarkGfm]}
       components={{
-        p: ({ children }) => <p className="text-gray-200 text-sm sm:text-base text-wrap">{children}</p>,
+        p: ({ children }) => <p className="text-ink-strong text-sm sm:text-base text-wrap">{children}</p>,
         a: ({ href, children }) => {
           const safeHref = sanitizeLinkHref(href);
           if (!safeHref) {
-            return <span className="text-gray-400 underline">{children}</span>;
+            return <span className="text-ink-muted underline">{children}</span>;
           }
           const isExternal = safeHref.startsWith("http");
           return (
@@ -50,28 +50,28 @@ function CommentBody({ body }: { body: string }) {
           );
         },
         img: () => null,
-        h1: ({ children }) => <p className="font-bold text-white">{children}</p>,
-        h2: ({ children }) => <p className="font-bold text-white">{children}</p>,
-        h3: ({ children }) => <p className="font-bold text-white">{children}</p>,
-        h4: ({ children }) => <p className="font-bold text-white">{children}</p>,
-        h5: ({ children }) => <p className="font-bold text-white">{children}</p>,
-        h6: ({ children }) => <p className="font-bold text-white">{children}</p>,
+        h1: ({ children }) => <p className="font-bold text-ink-bright">{children}</p>,
+        h2: ({ children }) => <p className="font-bold text-ink-bright">{children}</p>,
+        h3: ({ children }) => <p className="font-bold text-ink-bright">{children}</p>,
+        h4: ({ children }) => <p className="font-bold text-ink-bright">{children}</p>,
+        h5: ({ children }) => <p className="font-bold text-ink-bright">{children}</p>,
+        h6: ({ children }) => <p className="font-bold text-ink-bright">{children}</p>,
         ul: ({ children }) => <ul className="list-disc list-inside space-y-1 ml-4">{children}</ul>,
         ol: ({ children }) => <ol className="list-decimal list-inside space-y-1 ml-4">{children}</ol>,
-        li: ({ children }) => <li className="text-gray-200 text-sm sm:text-base">{children}</li>,
+        li: ({ children }) => <li className="text-ink-strong text-sm sm:text-base">{children}</li>,
         blockquote: ({ children }) => (
-          <blockquote className="border-l-4 border-[#6A6B70] pl-4 py-1 my-2 text-gray-300 italic">
+          <blockquote className="border-l-4 border-line-strong pl-4 py-1 my-2 text-ink-body italic">
             {children}
           </blockquote>
         ),
         code: ({ children }) => (
-          <code className="bg-[#131316] px-1.5 py-0.5 rounded text-sm font-mono text-pink-400">
+          <code className="bg-surface px-1.5 py-0.5 rounded text-sm font-mono text-pink-400">
             {children}
           </code>
         ),
         pre: ({ children }) => <pre className="whitespace-pre-wrap wrap-anywhere">{children}</pre>,
-        strong: ({ children }) => <strong className="font-bold text-white">{children}</strong>,
-        em: ({ children }) => <em className="italic text-gray-300">{children}</em>,
+        strong: ({ children }) => <strong className="font-bold text-ink-bright">{children}</strong>,
+        em: ({ children }) => <em className="italic text-ink-body">{children}</em>,
       }}
     >
       {body}
@@ -84,7 +84,7 @@ function CommentCard({ comment }: { comment: Comment }) {
   const isAI = comment.author_type === "ai";
 
   return (
-    <article className="rounded-2xl bg-[#26262C] border border-[#393A41] border-dashed p-5 space-y-3">
+    <article className="rounded-2xl bg-surface-3 border border-line border-dashed p-5 space-y-3">
       <header className="flex flex-wrap items-center gap-2">
         <span
           aria-hidden
@@ -92,18 +92,18 @@ function CommentCard({ comment }: { comment: Comment }) {
         >
           {isAI ? "AI" : name.slice(0, 1).toUpperCase()}
         </span>
-        <span className="text-sm font-semibold text-white">{name}</span>
+        <span className="text-sm font-semibold text-ink-bright">{name}</span>
         {isAI && (
           <span className="rounded-4xl bg-blue-500/10 px-2.5 py-0.5 text-xs font-semibold text-blue-300">
             AI Comment
           </span>
         )}
         {comment.ai_model && (
-          <span className="text-xs text-gray-500" title={comment.ai_model}>
+          <span className="text-xs text-ink-faint" title={comment.ai_model}>
             {comment.ai_model.split("/").pop()}
           </span>
         )}
-        <span className="text-xs text-gray-500 ml-auto">
+        <span className="text-xs text-ink-faint ml-auto">
           {formatDate(comment.created_at)}
         </span>
       </header>
@@ -116,12 +116,12 @@ function CommentCard({ comment }: { comment: Comment }) {
 
 export function AIDiscussionSkeleton() {
   return (
-    <div className="pt-8 border-t border-[#393A41] mt-12 animate-pulse" aria-hidden>
-      <div className="h-5 w-32 rounded bg-[#26262C] mb-4" />
-      <div className="rounded-2xl bg-[#26262C] p-5 space-y-3">
-        <div className="h-4 w-48 rounded bg-[#393A41]" />
-        <div className="h-4 w-full rounded bg-[#393A41]" />
-        <div className="h-4 w-5/6 rounded bg-[#393A41]" />
+    <div className="pt-8 border-t border-line mt-12 animate-pulse" aria-hidden>
+      <div className="h-5 w-32 rounded bg-surface-3 mb-4" />
+      <div className="rounded-2xl bg-surface-3 p-5 space-y-3">
+        <div className="h-4 w-48 rounded bg-line" />
+        <div className="h-4 w-full rounded bg-line" />
+        <div className="h-4 w-5/6 rounded bg-line" />
       </div>
     </div>
   );
@@ -136,12 +136,12 @@ export default async function AIDiscussion({ postId }: { postId: string }) {
   }
 
   return (
-    <section aria-label="AI Discussion" className="pt-8 border-t border-[#393A41] mt-12 space-y-4">
+    <section aria-label="AI Discussion" className="pt-8 border-t border-line mt-12 space-y-4">
       <div>
-        <h2 className="text-sm font-bold text-gray-400">
+        <h2 className="text-sm font-bold text-ink-muted">
           AI Discussion{comments.length > 1 ? ` (${comments.length})` : ""}
         </h2>
-        <p className="text-xs text-gray-500 mt-1">
+        <p className="text-xs text-ink-faint mt-1">
           What our AI discussant flagged about this post.
         </p>
       </div>

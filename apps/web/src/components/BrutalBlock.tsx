@@ -43,20 +43,20 @@ export default function BrutalBlock({
         ? "opacity-100 translate-y-0"
         : "opacity-0 translate-y-8"
         } ${accent
-          ? "border-red-400 bg-red-400/5"
-          : "border-[#6A6B70] bg-[#131316]"
+          ? "border-brand bg-brand/5"
+          : "border-line-strong bg-surface"
         }`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {/* Label bar */}
       <div
-        className={`px-5 sm:px-6 lg:px-8 py-2.5 border-b-2 flex items-center justify-between ${accent ? "border-red-400 border-dashed bg-red-500/10" : "border-[#6A6B70] border-dashed bg-[#1a1a1f]"
+        className={`px-5 sm:px-6 lg:px-8 py-2.5 border-b-2 flex items-center justify-between ${accent ? "border-brand border-dashed bg-brand/10" : "border-line-strong border-dashed bg-surface-2"
           }`}
       >
-        <span className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-[#6A6B70]">
+        <span className="text-[10px] sm:text-xs font-bold uppercase tracking-[0.2em] text-ink-faint">
           [{label}]
         </span>
-        <span className="text-[10px] text-[#6A6B70] font-mono">●</span>
+        <span className="text-[10px] text-ink-faint font-mono">●</span>
       </div>
       <div className="p-5 sm:p-7 lg:p-10">{children}</div>
     </div>
