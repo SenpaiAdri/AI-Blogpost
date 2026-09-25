@@ -20,7 +20,7 @@ export default function Navbar() {
           <div className="relative w-[120px] h-[50px]">
             <TransitionLink href="/">
               <Image
-                src="/logo/ai_blogpost_text.svg"
+                src="/logo/ai_blogpost_text_light.svg"
                 alt="logo"
                 fill
                 className="object-contain object-left dark:hidden"
