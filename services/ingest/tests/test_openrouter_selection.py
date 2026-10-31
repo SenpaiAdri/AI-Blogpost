@@ -204,7 +204,7 @@ class GenerateWithOpenRouterRobustnessTests(unittest.TestCase):
         self.assertIsNotNone(result)
         self.assertEqual(result["title"], "Robustness check post")
 
-    def test_unparseable_content_logs_preview(self):
+    def test_unparseable_content_does_not_log_response(self):
         response = _FakeResponse(content="plain prose, no JSON at all {{{")
         with self.assertLogs(generator.logger, level="WARNING") as logctx:
             result = self._call(response)
@@ -214,10 +214,7 @@ class GenerateWithOpenRouterRobustnessTests(unittest.TestCase):
             any("Failed to parse JSON response" in m for m in logctx.output),
             logctx.output,
         )
-        self.assertTrue(
-            any("Response preview" in m for m in logctx.output),
-            logctx.output,
-        )
+        self.assertFalse(any("plain prose" in m for m in logctx.output))
 
     def test_valid_json_with_usage_succeeds(self):
         response = _FakeResponse(content=json.dumps(_valid_payload()))

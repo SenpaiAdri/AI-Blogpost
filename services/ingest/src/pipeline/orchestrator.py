@@ -22,7 +22,7 @@ from infra.logger import get_logger
 from infra.metrics import cost_tracker
 from pipeline.persistence import batch_save_posts, save_post  # noqa: F401
 from pipeline.processor import process_news_item, process_news_item_for_batch  # noqa: F401
-from pipeline.run_stats import build_summary, log_summary
+from pipeline.run_stats import build_summary, log_summary, run_failed
 from selection.feeds import get_latest_news
 
 logger = get_logger("ingest")
@@ -130,12 +130,13 @@ def main():
     if pending_posts:
         logger.info(f"    Inserting {len(pending_posts)} posts in batch...")
         batch_success = batch_save_posts(client, pending_posts)
-        batch_insert_ok = batch_success
+        batch_insert_ok = bool(batch_success)
+        success_count = len(batch_success.saved_post_ids)
         if batch_success:
             success_count = len(pending_posts)
             logger.info(f"    ✓ Batch inserted {success_count} posts")
         else:
-            logger.warning("    Batch insert failed, posts were not saved")
+            logger.error("    Batch save failed; %d posts are known to have been inserted: %s", success_count, batch_success.saved_post_ids)
 
     finished_at = datetime.now().isoformat()
     summary = build_summary(
@@ -149,6 +150,8 @@ def main():
         batch_insert_ok=batch_insert_ok,
         selected_items=news_items,
     )
+    if batch_insert_ok is False and success_count:
+        summary["saved_post_ids"] = batch_success.saved_post_ids
     log_summary(summary)
 
     logger.info("=" * 60)
@@ -160,6 +163,11 @@ def main():
     logger.info("=" * 60)
 
     cost_tracker.log_summary()
+    if run_failed(success_count, run_stats, batch_insert_ok):
+        logger.error("Pipeline failed: see pipeline_summary and earlier errors")
+        sys.exit(1)
+    if any(run_stats.get(key, 0) for key in ("failed_ai", "failed_validation", "processing_errors")):
+        logger.warning("Pipeline partially succeeded; see pipeline_summary for failure counts")
 
 
 if __name__ == "__main__":
