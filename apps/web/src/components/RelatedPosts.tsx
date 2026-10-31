@@ -8,9 +8,9 @@ export default async function RelatedPosts({ postId, tagIds }: { postId: string;
     if (posts.length === 0) return null;
 
     return (
-        <aside aria-labelledby="related-posts-heading" className="min-w-0 border-t border-dashed border-line pt-6 xl:border-t-0 xl:border-l-2 xl:border-line-strong xl:pl-6 xl:pt-0">
+        <aside aria-labelledby="related-posts-heading" className="min-w-0 border-t border-dashed border-line pt-6 xl:border-t-0 xl:border-l-2 xl:border-line-strong/50 xl:pl-6 xl:pt-0">
             <h2 id="related-posts-heading" className="text-lg font-bold text-ink-bright">Related articles</h2>
-            <ul className="mt-4 divide-y divide-dashed divide-line">
+            <ul className="mt-5 divide-y-2 divide-dashed divide-line-strong/50">
                 {posts.map(post => (
                     <li key={post.id} className="py-5 first:pt-0 last:pb-0">
                         <Link href={`/blog/${post.slug}`} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 focus-visible:ring-offset-surface group">
