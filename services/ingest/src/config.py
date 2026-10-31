@@ -148,6 +148,11 @@ RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
 # Daily budget limit in USD (0 = unlimited)
 DAILY_BUDGET_LIMIT = float(os.getenv("DAILY_BUDGET_LIMIT", "2.0"))
 
+# Live account balance checks require a management key, separate from generation.
+OPENROUTER_MANAGEMENT_API_KEY = os.getenv("OPENROUTER_MANAGEMENT_API_KEY", "")
+# Minimum usable USD before starting a news item (calls plus reserve).
+OPENROUTER_MIN_CREDITS_USD = _float_env("OPENROUTER_MIN_CREDITS_USD", "0.05")
+
 # Cost per 1M tokens (for estimation fallback)
 COST_PER_MILLION_TOKENS = float(os.getenv("COST_PER_MILLION_TOKENS", "0.5"))
 

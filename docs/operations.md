@@ -90,3 +90,42 @@ Failure policy in `services/ingest/scripts/check_rss_feeds.py`: transient errors
 Before applying 0005, inspect live grants, role memberships, table ownership, and existing policies/RPC functions; reconcile differences with the local contract. Use separate staging data first. Verify anon and non-admin authenticated Data API reads/writes, published-post/tag/approved-comment reads, service-role worker access, and admin transactions. Do not grant the restricted group to `authenticated`, `anon`, or the Data API authenticator. Create its database LOGIN credential only in a provider/ignored secret store.
 
 Regenerate database types from the verified staging project after applying the migration with the documented generate-types command. Permissions do not change DTO columns, but regeneration remains pending until an authenticated staging target is available. Production application and rollback require the owner's concrete cutover review; keep the old backend running.
+
+
+## OpenRouter credit checks before ingestion
+
+News ingestion checks live credits before processing each candidate. It reads
+`GET /api/v1/credits` with a management key and `GET /api/v1/key` with the
+existing generation key. Usable USD is the smallest of the account balance
+(`total_credits - total_usage`), the key's remaining allowance when capped,
+and the effective budget when present. An uncapped key does not bypass the
+account balance check.
+
+Setup:
+
+1. Create an OpenRouter management key and store it as the GitHub Actions
+   repository secret `OPENROUTER_MANAGEMENT_API_KEY`. Keep the existing
+   `OPEN_ROUTER_API_KEY` for model calls. For local runs, set both in
+   `services/ingest/.env`.
+2. Optionally set the repository variable `OPENROUTER_MIN_CREDITS_USD`
+   (or the local environment variable). It defaults to `$0.05` and must be
+   finite and positive. This floor is intended to cover an item's
+   generation/fallback/retry calls and a reserve, rather than an exact cost
+   estimate. Increase it for more expensive models or larger requests.
+
+If usable credits fall below the floor, ingestion stops with summary note
+`insufficient_credits`. Generated posts waiting for batch insertion are still
+saved. A missing management key, API error, timeout, or invalid response stops
+processing with `credit_check_failed`; an empty run then fails the job so the
+problem is visible. Partial runs retain their existing success policy and
+include the stop reason in the GitHub Actions summary.
+
+Preflight does not reserve funds; other jobs (including AI comments) can spend
+credits concurrently. An HTTP 402 during generation stops fallback attempts,
+item retries, and subsequent items, while preserving completed posts. Rerun
+after adding credits, raising the key/budget cap, or resolving transient
+in-flight spending limits. These checks apply to news ingestion; the separate
+AI comments job retains its existing behavior.
+
+References: [credits endpoint](https://openrouter.ai/docs/api/api-reference/credits/get-remaining-credits)
+and [key limits](https://openrouter.ai/docs/api_reference/limits).

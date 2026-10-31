@@ -57,7 +57,7 @@ def _generate_validated_post(
             )
 
             if not post_data:
-                if attempt < max_retries - 1:
+                if generation_failure_reason() != "insufficient_credits" and attempt < max_retries - 1:
                     logger.warning("    AI failed, retrying...")
                     time.sleep(5)
                     continue

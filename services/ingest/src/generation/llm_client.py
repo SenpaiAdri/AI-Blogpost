@@ -134,6 +134,9 @@ def generate_blog_post(
         logger.info("    ✓ OpenRouter primary succeeded")
         return result
 
+    if generation_failure_reason() == "insufficient_credits":
+        return None
+
     logger.info(f"    Trying OpenRouter fallback ({OPENROUTER_FALLBACK_MODEL})...")
 
     if not cost_tracker.should_continue():

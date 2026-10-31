@@ -11,6 +11,7 @@ from dotenv import load_dotenv
 env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), ".env")
 load_dotenv(env_path)
 
+from generation.llm_client import generation_failure_reason
 from infra.ai_audit import log_ai_generation_result  # noqa: F401 (public pipeline API)
 from infra.database import (
     get_active_rss_sources,
@@ -20,6 +21,7 @@ from infra.database import (
 )
 from infra.logger import get_logger
 from infra.metrics import cost_tracker
+from infra.openrouter_credits import CreditCheckError, check_available_credits
 from pipeline.persistence import batch_save_posts, save_post  # noqa: F401
 from pipeline.processor import process_news_item, process_news_item_for_batch  # noqa: F401
 from pipeline.run_stats import build_summary, log_summary, run_failed
@@ -104,11 +106,23 @@ def main():
     logger.info("[4/4] Processing news items...")
     pending_posts = []
     budget_stopped_early = False
+    credit_stop_reason = None
 
     for item in news_items:
         if not cost_tracker.should_continue():
             logger.warning("Budget exhausted, stopping early")
             budget_stopped_early = True
+            break
+
+        try:
+            available = check_available_credits()
+            logger.info("    OpenRouter usable credits: $%.4f", available)
+        except CreditCheckError as error:
+            credit_stop_reason = error.reason
+            budget_stopped_early = True
+            if error.reason == "credit_check_failed":
+                run_stats["credit_check_errors"] = 1
+            logger.warning("OpenRouter preflight stopped ingestion: %s", error.reason)
             break
 
         try:
@@ -118,6 +132,10 @@ def main():
             if post_data:
                 pending_posts.append(post_data)
                 time.sleep(2)
+            elif generation_failure_reason() == "insufficient_credits":
+                credit_stop_reason = "insufficient_credits"
+                budget_stopped_early = True
+                break
         except Exception as e:
             logger.error(f"    Error processing {item.title}: {e}")
             from pipeline.run_stats import bump_run_stat
@@ -149,6 +167,7 @@ def main():
         budget_stopped_early=budget_stopped_early,
         batch_insert_ok=batch_insert_ok,
         selected_items=news_items,
+        note=credit_stop_reason,
     )
     if batch_insert_ok is False and success_count:
         summary["saved_post_ids"] = batch_success.saved_post_ids

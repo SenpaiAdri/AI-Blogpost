@@ -45,7 +45,7 @@ class PipelineExitTests(unittest.TestCase):
         def fail(*args, **kwargs):
             kwargs['run_stats']['failed_ai'] = 1
             return None
-        with patch.object(orchestrator, 'validate_environment', return_value=True), patch.object(orchestrator, 'get_supabase_client'), patch.object(orchestrator, 'get_active_topic_guidance', return_value=[]), patch.object(orchestrator, 'get_active_rss_sources', return_value=[{'name':'Feed','url':'https://example.invalid'}]), patch.object(orchestrator, 'get_latest_news', return_value=[item]), patch.object(orchestrator, 'get_all_existing_urls', return_value=set()), patch.object(orchestrator, 'process_news_item_for_batch', side_effect=fail), patch.object(orchestrator.cost_tracker, 'should_continue', return_value=True):
+        with patch.object(orchestrator, 'check_available_credits', return_value=1), patch.object(orchestrator, 'validate_environment', return_value=True), patch.object(orchestrator, 'get_supabase_client'), patch.object(orchestrator, 'get_active_topic_guidance', return_value=[]), patch.object(orchestrator, 'get_active_rss_sources', return_value=[{'name':'Feed','url':'https://example.invalid'}]), patch.object(orchestrator, 'get_latest_news', return_value=[item]), patch.object(orchestrator, 'get_all_existing_urls', return_value=set()), patch.object(orchestrator, 'process_news_item_for_batch', side_effect=fail), patch.object(orchestrator.cost_tracker, 'should_continue', return_value=True):
             with self.assertRaises(SystemExit) as exit_result: orchestrator.main()
             self.assertEqual(exit_result.exception.code, 1)
 
