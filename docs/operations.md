@@ -84,3 +84,9 @@ Failure policy in `services/ingest/scripts/check_rss_feeds.py`: transient errors
 - The web app should use the Supabase anon key for public reads.
 - Middleware rate limiting in the web app is in-memory and best treated as a lightweight guard, not a distributed production rate limiter.
 - GitHub Actions is sufficient for scheduled publishing at the current scale. If ingestion volume grows, move the worker to a queue or scheduler designed for long-running jobs.
+
+## Pending admin permission migration
+
+Before applying 0005, inspect live grants, role memberships, table ownership, and existing policies/RPC functions; reconcile differences with the local contract. Use separate staging data first. Verify anon and non-admin authenticated Data API reads/writes, published-post/tag/approved-comment reads, service-role worker access, and admin transactions. Do not grant the restricted group to `authenticated`, `anon`, or the Data API authenticator. Create its database LOGIN credential only in a provider/ignored secret store.
+
+Regenerate database types from the verified staging project after applying the migration with the documented generate-types command. Permissions do not change DTO columns, but regeneration remains pending until an authenticated staging target is available. Production application and rollback require the owner's concrete cutover review; keep the old backend running.

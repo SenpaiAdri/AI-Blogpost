@@ -11,7 +11,7 @@ audit behavior cannot drift between the inline-save and batch-save paths:
 import time
 from typing import Dict, List, Optional
 
-from generation.llm_client import generate_blog_post
+from generation.llm_client import generate_blog_post, generation_failure_reason
 from infra.ai_audit import log_ai_generation_result
 from infra.logger import get_logger
 from models import PostInsertModel
@@ -69,7 +69,7 @@ def _generate_validated_post(
                     source_name=display_source_name,
                     source_url=item.link,
                     status="failed",
-                    failure_reason="ai_generation_failed",
+                    failure_reason=generation_failure_reason(),
                     validated=False,
                 )
                 return None
@@ -77,9 +77,8 @@ def _generate_validated_post(
             try:
                 validated_post = PostInsertModel(**post_data)
                 post_data = validated_post.model_dump(mode='json')
-            except ValidationError as e:
-                validation_error = str(e).replace('\n', ' | ')
-                logger.error(f"    AI output validation failed: {validation_error}")
+            except ValidationError:
+                logger.error("    AI output validation failed")
                 if attempt < max_retries - 1:
                     time.sleep(3)
                     continue
@@ -91,8 +90,7 @@ def _generate_validated_post(
                     source_name=display_source_name,
                     source_url=item.link,
                     status="failed",
-                    output_json=post_data,
-                    failure_reason=f"validation_failed: {validation_error}",
+                    failure_reason="invalid_ai_output",
                     validated=False,
                 )
                 return None

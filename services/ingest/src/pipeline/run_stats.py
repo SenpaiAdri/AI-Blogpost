@@ -1,6 +1,7 @@
 """Run-level observability: counters, source distribution, summary payload."""
 
 import json
+import os
 from typing import Dict, List, Optional
 
 from infra.metrics import cost_tracker
@@ -72,3 +73,19 @@ def log_summary(summary: Dict) -> None:
     from infra.logger import get_logger
 
     get_logger("ingest").info("pipeline_summary %s", json.dumps(summary))
+    path = os.getenv("GITHUB_STEP_SUMMARY")
+    if path:
+        lines = ["## Ingestion summary", f"- Saved posts: {summary.get('new_posts_saved', 0)}", f"- AI failures: {summary.get('failed_ai', 0)}", f"- Validation failures: {summary.get('failed_validation', 0)}", f"- Processing errors: {summary.get('processing_errors', 0)}", f"- Batch save succeeded: {summary.get('batch_insert_ok')}"]
+        if summary.get("saved_post_ids"):
+            lines.append("- Posts known to be inserted: " + ", ".join(summary["saved_post_ids"]))
+        try:
+            with open(path, "a", encoding="utf-8") as output:
+                output.write("\n".join(lines) + "\n")
+        except OSError:
+            get_logger("ingest").warning("Could not write GitHub step summary")
+
+
+def run_failed(saved_count: int, stats: Dict[str, int], batch_insert_ok: Optional[bool]) -> bool:
+    """Fail complete processing outages and any batch save failure."""
+    errors = sum(stats.get(key, 0) for key in ("failed_ai", "failed_validation", "processing_errors"))
+    return batch_insert_ok is False or (saved_count == 0 and errors > 0)

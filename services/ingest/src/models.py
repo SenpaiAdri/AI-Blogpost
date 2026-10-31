@@ -24,6 +24,7 @@ class SourceModel(BaseModel):
         return v
 
 class PostInsertModel(BaseModel):
+    """Worker write contract; production updated_at is database-owned and log sources remain required."""
     title: str = Field(..., max_length=MAX_TITLE_LENGTH)
     slug: str = Field(default="")
     content: str = Field(..., max_length=MAX_CONTENT_LENGTH)

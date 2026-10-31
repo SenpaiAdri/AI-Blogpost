@@ -15,6 +15,7 @@ logger = get_logger("database")
 
 
 def get_supabase_client():
+    """Use the worker service role; contract reconciliation preserves current production defaults."""
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise ValueError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY")
     return supabase.create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)
@@ -55,9 +56,9 @@ def get_active_topic_guidance(client) -> list[dict]:
             .execute()
         )
         return response.data or []
-    except Exception as exc:
-        logger.warning(f"Topic guidance unavailable; continuing without active topics: {exc}")
-        return []
+    except Exception:
+        logger.error("Topic guidance unavailable")
+        raise
 
 def get_active_rss_sources(client) -> list[dict]:
     """Fetch active RSS sources from the database."""
@@ -69,9 +70,9 @@ def get_active_rss_sources(client) -> list[dict]:
             .execute()
         )
         return response.data or []
-    except Exception as exc:
-        logger.warning(f"RSS sources unavailable; continuing with hardcoded feeds: {exc}")
-        return []
+    except Exception:
+        logger.error("RSS sources unavailable")
+        raise
 
 
 def get_recent_posts(client, lookback_hours: int = 72, limit: int = 10) -> list[dict]:

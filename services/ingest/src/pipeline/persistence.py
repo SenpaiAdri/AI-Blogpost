@@ -1,6 +1,7 @@
 """Supabase persistence: tag upsert + post insert + post_tags linking."""
 
 from typing import Dict, List
+from dataclasses import dataclass, field
 
 from infra.logger import get_logger
 from safety.slugs import slugify_tag
@@ -52,8 +53,18 @@ def save_post(client, post_data: dict) -> bool:
         return False
 
 
-def batch_save_posts(client, posts_data: List[Dict]) -> bool:
-    """Save multiple posts in a single batch transaction."""
+@dataclass
+class BatchSaveResult:
+    ok: bool
+    saved_post_ids: List[str] = field(default_factory=list)
+
+    def __bool__(self):
+        return self.ok
+
+
+def batch_save_posts(client, posts_data: List[Dict]) -> BatchSaveResult:
+    """Save posts and report IDs even if a later tag-link request fails."""
+    saved_post_ids = []
     try:
         tag_map = {}
         all_tags = set()
@@ -99,8 +110,9 @@ def batch_save_posts(client, posts_data: List[Dict]) -> bool:
 
         if not response.data:
             logger.error("Batch insert failed - no data returned")
-            return False
+            return BatchSaveResult(False, saved_post_ids)
 
+        saved_post_ids = [str(post["id"]) for post in response.data]
         post_tags_to_insert = []
         for i, post in enumerate(response.data):
             post_id = post["id"]
@@ -111,8 +123,8 @@ def batch_save_posts(client, posts_data: List[Dict]) -> bool:
         if post_tags_to_insert:
             client.from_("post_tags").insert(post_tags_to_insert).execute()
 
-        return True
+        return BatchSaveResult(True, saved_post_ids)
 
     except Exception as e:
         logger.error(f"Batch save error: {e}")
-        return False
+        return BatchSaveResult(False, saved_post_ids)

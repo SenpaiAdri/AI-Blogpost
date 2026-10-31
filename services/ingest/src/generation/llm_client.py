@@ -2,6 +2,7 @@
 
 import os
 from typing import Any, Dict, List, Optional
+from contextvars import ContextVar
 
 from openai import OpenAI
 
@@ -25,6 +26,14 @@ OPENROUTER_API_KEY = os.getenv("OPEN_ROUTER_API_KEY")
 
 # Backward-compat alias (primary). Prefer OPENROUTER_PRIMARY_MODEL.
 OPENROUTER_MODEL = OPENROUTER_PRIMARY_MODEL
+_failure_reason = ContextVar("generation_failure", default="ai_generation_failed")
+
+def classify_provider_error(error: Exception) -> str:
+    status = getattr(error, "status_code", None)
+    return {402: "insufficient_credits", 429: "rate_limited", 401: "provider_authentication_failed", 403: "provider_authentication_failed"}.get(status, "provider_unavailable")
+
+def generation_failure_reason() -> str:
+    return _failure_reason.get()
 
 
 def generate_with_openrouter(
@@ -90,14 +99,15 @@ def generate_with_openrouter(
 
         result = recover_json(text)
         if not result:
+            _failure_reason.set("invalid_ai_output")
             logger.warning("    Failed to parse JSON response")
-            logger.warning("    Response preview (first 500 chars): %r", text[:500])
             return None
 
         return finalize_result(result, model, topic, source_name, source_url, input_tokens, output_tokens)
 
     except Exception as e:
-        logger.warning(f"    OpenRouter error: {e}")
+        _failure_reason.set(classify_provider_error(e))
+        logger.warning("    OpenRouter error category: %s", _failure_reason.get())
         return None
 
 
@@ -109,6 +119,7 @@ def generate_blog_post(
     active_topics: Optional[List[Dict[str, Any]]] = None,
 ) -> Optional[Dict[str, Any]]:
     """Generate blog post via OpenRouter-only chain: primary, then fallback model."""
+    _failure_reason.set("ai_generation_failed")
     logger.info(f"    Trying OpenRouter primary ({OPENROUTER_PRIMARY_MODEL})...")
 
     if not cost_tracker.should_continue():
