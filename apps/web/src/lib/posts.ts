@@ -2,6 +2,7 @@ import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { supabase } from "@/lib/supabase";
 import { Comment, Post, PostRow, Tag } from "@/lib/types";
+import { rankRelatedPosts, type RelatedPost } from "@/lib/related-posts";
 
 const POSTS_WITH_TAGS_SELECT = `
       *,
@@ -210,6 +211,40 @@ export async function getAllPostSlugs(): Promise<{ slug: string }[]> {
     const { data: posts } = await supabase.from("posts").select("slug");
     return posts?.map(({ slug }) => ({ slug })) || [];
 }
+
+async function fetchRelatedPosts(postId: string, tagIds: Tag['id'][]): Promise<RelatedPost[]> {
+    if (tagIds.length === 0) return [];
+
+    const { data, error } = await supabase
+        .from("posts")
+        .select(`id, slug, title, tldr, published_at, is_published,
+            post_tags!inner(tags(id, name, slug))`)
+        .eq("is_published", true)
+        .neq("id", postId)
+        .in("post_tags.tag_id", tagIds)
+        .order("published_at", { ascending: false })
+        .order("id", { ascending: true })
+        // shortcut: rank the newest 100 matches; move ranking into SQL if the archive outgrows this pool.
+        .limit(100);
+
+    if (error) {
+        console.error("Error fetching related posts:", error);
+        return [];
+    }
+
+    const candidates = (data ?? []).map(row => ({
+        ...row,
+        tldr: row.tldr as string[] | null,
+        tags: row.post_tags.map(link => link.tags),
+    }));
+    return rankRelatedPosts(candidates, postId, tagIds);
+}
+
+export const getRelatedPosts = unstable_cache(
+    fetchRelatedPosts,
+    ["related-posts"],
+    { revalidate: 600, tags: ["posts", "tags"] }
+);
 
 // Top-level approved comments only (parent_id IS NULL): v1 rows are AI notes,
 // later this same feed mixes in top-level human comments with no query change.

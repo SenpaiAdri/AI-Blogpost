@@ -3,6 +3,7 @@ import Tags from "@/components/Tags";
 import BlogContent from "@/components/BlogContent";
 import AIDiscussion, { AIDiscussionSkeleton } from "@/components/AIDiscussion";
 import ShareButton from "@/components/ShareButton";
+import RelatedPosts from "@/components/RelatedPosts";
 import { getPostBySlug, getAllPostSlugs } from "@/lib/posts";
 import { formatDate, formatSource } from "@/lib/utils";
 import { notFound } from "next/navigation";
@@ -53,8 +54,9 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
       <Navbar />
 
       <div className="w-full flex justify-center">
-        <main className="w-full max-w-4xl sm:border-x-2 sm:border-line-strong sm:border-dashed min-h-screen pt-24 px-6 sm:px-8 pb-20">
-          <div className="max-w-3xl mx-auto space-y-5">
+        <main className="w-full max-w-4xl xl:has-[aside]:max-w-6xl sm:border-x-2 sm:border-line-strong sm:border-dashed min-h-screen pt-24 px-6 sm:px-8 pb-20">
+          <div className="grid grid-cols-1 gap-10 xl:has-[aside]:grid-cols-[minmax(0,48rem)_minmax(0,1fr)] xl:gap-8">
+          <div className="w-full min-w-0 max-w-3xl mx-auto space-y-5">
             <header className="space-y-4">
               <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold leading-tight">
                 {post.title}
@@ -118,6 +120,10 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
                 </div>
               </div>
             )}
+          </div>
+          <Suspense fallback={null}>
+            <RelatedPosts postId={post.id} tagIds={(post.tags ?? []).map(tag => tag.id)} />
+          </Suspense>
           </div>
         </main>
       </div>
