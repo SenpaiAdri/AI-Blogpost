@@ -35,3 +35,7 @@ Run web linting from the web app directory:
 cd apps/web
 npm run lint
 ```
+
+## Admin migration checks
+
+The replacement lives in the separate admin checkout. Its integration suite requires `TEST_DATABASE_URL` pointing to a disposable loopback database named `aiblogpost_migration_test`, plus `BLOG_CONTRACT_ROOT` pointing to this checkout. Tests reset that named local schema and refuse remote targets. Auth tests simulate upstream identity responses; local SQL tests do not establish live Supabase Data API behavior or Google login. Never run ingestion as a migration test.

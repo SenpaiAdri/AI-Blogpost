@@ -15,6 +15,7 @@ logger = get_logger("database")
 
 
 def get_supabase_client():
+    """Use the worker service role; contract reconciliation preserves current production defaults."""
     if not SUPABASE_URL or not SUPABASE_SERVICE_KEY:
         raise ValueError("Missing SUPABASE_URL or SUPABASE_SERVICE_KEY")
     return supabase.create_client(SUPABASE_URL, SUPABASE_SERVICE_KEY)

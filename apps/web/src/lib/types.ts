@@ -1,3 +1,4 @@
+// Contract reconciled to production (20261030131932); permission 0005 allows public reads only.
 import type { Database, Json } from './database.types'
 
 export type { Json }

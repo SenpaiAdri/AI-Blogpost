@@ -38,3 +38,11 @@ flowchart LR
 Keep the web app and ingest worker separate. The worker has long-running, network-heavy responsibilities that fit a scheduled batch process better than a request/response web server.
 
 Supabase is the correct integration point at this scale. If the product grows, the next major architecture step should be queue-backed ingestion, not merging the worker into the web app.
+
+## Admin migration in progress (2026-10-30)
+
+The current React/Vite admin and Spring Boot backend remain the deployed system. A separate admin worktree implements the approved TanStack Start replacement: server-owned Supabase Google Auth with HTTP-only cookies, a per-request restricted Postgres connection through cache-disabled Hyperdrive, and Cloudflare Workers Free. Public web and ingest boundaries remain unchanged.
+
+Migration `0005_admin_permissions.sql` is a proposed permission contract, tested only against disposable local PostgreSQL. It adds no columns and has not been applied to production. It limits anon/authenticated reads to public posts/tags/post-tags/approved comments, denies private tables and mutations, preserves service-role worker access, and defines an unprivileged NOLOGIN admin group. A separate login credential is provisioned outside source control after live grants and memberships are inspected.
+
+Real Google flow, direct Supabase Data API checks, staging target mapping, and Workers CPU feasibility remain release gates. This document does not describe the replacement as live.
