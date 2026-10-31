@@ -6,7 +6,7 @@
 apps/web/          # Next.js 16 public site (React 19, Tailwind 4, TypeScript)
 services/ingest/   # Python 3 ingestion worker (RSS -> AI generation -> Supabase)
 infra/supabase/    # DB contract: schema.sql, migrations/, seed.sql
-.github/workflows/ # Scheduled CI: ingest (2x daily cron) + RSS health
+.github/workflows/ # Scheduled CI: ingest, AI comments, and RSS health
 docs/              # architecture.md, operations.md, local-development.md
 ```
 
@@ -24,7 +24,8 @@ npm run generate-types  # regenerates src/lib/database.types.ts from Supabase (n
 # Ingest worker (run from services/ingest/)
 pip install -r requirements.txt
 python src/main.py                  # full ingest pipeline
-python -m unittest discover tests   # unit tests (fast, no external services needed)
+python src/comments/runner.py       # score recent posts and generate AI comments
+python -m unittest discover tests    # unit tests (fast, no external services needed)
 python scripts/check_rss_feeds.py   # RSS health check (also run by CI)
 ```
 
@@ -35,10 +36,13 @@ python scripts/check_rss_feeds.py   # RSS health check (also run by CI)
 - **Two Supabase clients** in `apps/web/src/lib/supabase.ts`: `supabase` (anon) vs `supabaseAdmin` (service key, bypasses RLS — server/API routes only).
 - **Rate limiting** for `/api` and `/blog` paths lives in `apps/web/middleware.ts`, configured via `RATE_LIMIT_MAX_REQUESTS` / `RATE_LIMIT_WINDOW_MS`.
 - **Custom dark theme** — CSS variables in `globals.css` (#131316 background, plus #393A41 / #6A6B70 / #9A9BA2), not Tailwind defaults. Borders: `border-[#393A41] border-dashed`.
+- **OpenRouter-only generation** — the worker uses the configured primary/fallback OpenRouter models; do not reintroduce a direct Gemini provider path.
+- **AI comments are a separate batch pipeline** in `services/ingest/src/comments/`, scheduled by `.github/workflows/ai-comments.yml` and sharing the worker's budget tracking.
+- **Inline images are stripped by default** to avoid unlicensed hotlinking; only opt out when embeds are explicitly licensed.
 
 ## Cross-File Sync Rules (easy to miss)
 
-- Adding an env var to the Python worker -> also add it to the `env:` block of `.github/workflows/ingest.yml`, or the scheduled job won't receive it.
+- Adding an env var to the Python worker -> also add it to the relevant workflow `env:` block(s) in `.github/workflows/`, or the scheduled job won't receive it.
 - Changing `infra/supabase/schema.sql` or adding a migration -> update `apps/web/src/lib/types.ts` AND `services/ingest/src/infra/database.py`, then regenerate `database.types.ts`.
 - Major system/architecture/deployment changes -> update the relevant doc in `docs/`.
 
@@ -58,5 +62,5 @@ cp services/ingest/.env.example services/ingest/.env  # service key + AI keys
 
 ## Gotchas
 
-- The ingest worker is not a long-running server: GitHub Actions triggers it twice daily (`0 0,12 * * *` UTC) or via manual dispatch. CI pins Python 3.12.
+- The ingest worker is not a long-running server: GitHub Actions triggers ingestion twice daily (`0 0,12 * * *` UTC), AI comments on a separate Tue/Thu/Sat schedule, or either job via manual dispatch. CI pins Python 3.12.
 - Worker needs `SUPABASE_SERVICE_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`) — the anon key cannot write.
